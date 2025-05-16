@@ -1,6 +1,4 @@
-# My Chat
-
-![Watch the video](https://screen.studio/share/r5ljIy7R)
+# Anirudh's Chat ([watch the video](https://screen.studio/share/r5ljIy7R))
 
 ## Background
 
