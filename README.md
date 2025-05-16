@@ -1,6 +1,6 @@
 # Anirudh's Chat
 
-[![Anirudh's Chat Demo](./public/demo.png)](https://chat.kamath.io)
+[![Anirudh's Chat Demo](./public/demo.png)](https://screen.studio/share/r5ljIy7R)
 
 <center><a href="https://screen.studio/share/r5ljIy7R">Watch the video!</a></center>
 
