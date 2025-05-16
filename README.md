@@ -1,4 +1,8 @@
-# Anirudh's Chat ([watch the video](https://screen.studio/share/r5ljIy7R))
+# Anirudh's Chat
+
+[![Anirudh's Chat Demo](./public/demo.png)](https://chat.kamath.io)
+
+<center><a href="https://screen.studio/share/r5ljIy7R">Watch the video!</a></center>
 
 ## Background
 
