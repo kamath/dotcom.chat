@@ -434,8 +434,14 @@ export default function ChatPage() {
 
         {/* Main Chat Content */}
         <div className="flex flex-col flex-1 h-full overflow-x-auto">
-          <header className="p-4 border-b flex justify-between items-center">
-            <h1 className="text-xl font-semibold">Git Chat</h1>
+          <header className="p-4 border-b flex gap-2 items-center">
+            <h1 className="text-xl font-semibold">dotcomdotchat</h1>
+            <iframe
+              src="https://ghbtns.com/github-btn.html?user=twbs&repo=bootstrap&type=star&count=true&size=large"
+              width="170"
+              height="30"
+              title="GitHub"
+            ></iframe>
           </header>
 
           <ScrollArea className="flex-1 p-4 space-y-4" ref={scrollAreaRef}>
@@ -660,7 +666,6 @@ export default function ChatPage() {
                   placeholder="[PRESS TAB] Type a message..."
                   className="flex-1"
                   disabled={isLoading}
-                  autoFocus
                   showPressEsc={true}
                 />
                 {status === "streaming" ? (

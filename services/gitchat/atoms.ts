@@ -4,7 +4,7 @@ import type { Commit } from "./client";
 import type { Message } from "ai";
 
 export const ROOT_COMMIT: Commit = {
-  id: "ROOT_COMMIT",
+  id: "ROOT",
   author: "system",
   message: "Initial commit",
   parentId: undefined,
@@ -14,7 +14,7 @@ export const ROOT_COMMIT: Commit = {
     message: {
       role: "system",
       content: "Initial commit",
-      id: "ROOT_COMMIT",
+      id: "ROOT",
     },
   },
 };

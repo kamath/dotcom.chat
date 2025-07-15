@@ -391,7 +391,6 @@ export default function ChatCompletion() {
             }}
             placeholder="Ask a follow up question..."
             className="w-full rounded-lg px-4 py-2 bg-black/30 border border-white/30"
-            autoFocus={true}
             onKeyDown={async (event) => {
               if (event.key === "Enter") {
                 if (input.trim()) {
