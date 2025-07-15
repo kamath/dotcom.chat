@@ -1,7 +1,5 @@
 import { Tool, tool } from "ai";
 import { experimental_createMCPClient as createMCPClient } from "ai";
-import { readFile } from "fs/promises";
-import { join } from "path";
 import { z } from "zod";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
@@ -36,21 +34,8 @@ const tools: Record<string, Tool> = {
   }),
 };
 
-export const getTools = async () => {
+export const getTools = async (mcpUrls: McpUrl[] = []) => {
   try {
-    // Read mcpurls.json if it exists, otherwise initialize an empty array
-    const MCP_URLS_FILEPATH = join(process.cwd(), "mcpurls.json");
-
-    let mcpUrls: McpUrl[] = [];
-    try {
-      const fileContent = await readFile(MCP_URLS_FILEPATH, "utf8");
-      const parsed = JSON.parse(fileContent);
-      mcpUrls = parsed.mcpUrls || [];
-    } catch {
-      // File does not exist or is invalid, initialize as empty array
-      mcpUrls = [];
-    }
-
     // Flatten all MCP tools into one big object
     const mcpTools: Record<string, Tool> = {};
     const mcpBreakdown: Record<string, Record<string, Tool>> = {};

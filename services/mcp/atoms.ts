@@ -19,11 +19,5 @@ export const breakdownAtom = atom<Record<string, Record<string, Tool>> | null>(
 );
 export const isMcpConfigOpenAtom = atom<boolean>(false);
 
-// New URL-based storage instead of JSON config
+// Store MCP URLs in localStorage instead of JSON file
 export const mcpUrlsAtom = atomWithStorage<McpUrl[]>("mcpUrls", []);
-
-// Keep for backwards compatibility during migration
-export const serverConfigAtom = atomWithStorage<Record<string, unknown> | null>(
-  "serverConfig",
-  null
-);

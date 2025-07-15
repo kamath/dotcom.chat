@@ -121,11 +121,11 @@ export function McpUrlManager() {
     setUrls(updatedUrls);
   };
 
-  const handleSave = async () => {
+  const handleTestConnection = async () => {
     try {
-      await mcpClient.handleSave();
+      await mcpClient.getTools();
     } catch (error) {
-      console.error("Error saving URLs:", error);
+      console.error("Error testing connection:", error);
     }
   };
 
@@ -147,7 +147,7 @@ export function McpUrlManager() {
             Add MCP server URLs that support Streamable HTTP/SSE transport. URLs
             should point to valid MCP endpoints (usually ending in{" "}
             <code>/mcp</code>). These servers will be connected to provide
-            additional tools.
+            additional tools. URLs are sent with each chat request.
           </DialogDescription>
         </DialogHeader>
 
@@ -224,14 +224,13 @@ export function McpUrlManager() {
 
         <DialogFooter>
           <Button
-            onClick={async () => {
-              await handleSave();
-              setIsOpen(false);
-            }}
+            onClick={handleTestConnection}
             disabled={isLoading}
+            variant="outline"
           >
-            {isLoading ? "Connecting..." : "Save and Connect"}
+            {isLoading ? "Testing..." : "Test Connection"}
           </Button>
+          <Button onClick={() => setIsOpen(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

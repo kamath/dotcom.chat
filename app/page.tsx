@@ -118,7 +118,7 @@ export default function ChatPage() {
           message: assistantMessage.content,
           author:
             assistantMessage.role === "assistant"
-              ? pendingMessageConfig.modelName
+              ? String(pendingMessageConfig.modelName)
               : "user",
           date: (assistantMessage.createdAt ?? new Date()).toISOString(),
           metadata: { message: assistantMessage },

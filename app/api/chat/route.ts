@@ -3,11 +3,12 @@ import { getTools } from "@/lib/tools";
 import { resolveModel } from "../apiUtils";
 
 export async function POST(req: Request) {
-  const { messages, pendingMessageConfig } = await req.json();
+  const { messages, pendingMessageConfig, mcpUrls } = await req.json();
 
   console.log("Received pendingMessageConfig:", pendingMessageConfig);
+  console.log("Received mcpUrls:", mcpUrls);
 
-  const { tools, breakdown, closeClients } = await getTools();
+  const { tools, breakdown, closeClients } = await getTools(mcpUrls || []);
 
   console.log("TOOLS", tools);
   console.log("BREAKDOWN", breakdown);

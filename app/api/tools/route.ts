@@ -15,8 +15,6 @@ import {
   ZodDefault,
   ZodSchema,
 } from "zod";
-import { readFile, unlink, writeFile } from "fs/promises";
-import { join } from "path";
 
 interface SerializedParameter {
   type: string;
@@ -114,27 +112,15 @@ function serializeParameters(
   return serializedParams;
 }
 
-// Write the data to mcpurls.json
-const MCP_URLS_FILEPATH = join(process.cwd(), "mcpurls.json");
-async function getExistingUrls() {
-  try {
-    const content = await readFile(MCP_URLS_FILEPATH, "utf8");
-    if (!content.trim()) {
-      return { mcpUrls: [] };
-    }
-    return JSON.parse(content);
-  } catch {
-    return { mcpUrls: [] };
-  }
-}
-
 /**
  * GET handler for the /api/tools route.
- * Serializes and returns the definitions of tools from lib/tools.ts.
+ * Accepts mcpUrls in the request body and returns the serialized tools.
  */
-export async function GET() {
+export async function POST(request: Request) {
   try {
-    const { tools, breakdown, closeClients } = await getTools();
+    const { mcpUrls } = await request.json();
+
+    const { tools, breakdown, closeClients } = await getTools(mcpUrls || []);
     await closeClients();
     const serializedTools: Record<string, SerializedTool> = {};
 
@@ -158,7 +144,6 @@ export async function GET() {
     return NextResponse.json({
       tools: serializedTools,
       breakdown,
-      config: await getExistingUrls(),
     });
   } catch (error) {
     console.error("Error serializing tools:", error);
@@ -169,66 +154,50 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+/**
+ * GET handler for the /api/tools route.
+ * Returns tools without any MCP configuration (just local tools).
+ */
+export async function GET() {
   try {
-    const data = await request.json();
+    const { tools, breakdown, closeClients } = await getTools([]);
+    await closeClients();
+    const serializedTools: Record<string, SerializedTool> = {};
 
-    console.log("DATA", data);
-
-    // Validate that we received valid data
-    if (!data || typeof data !== "object") {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    for (const [name, toolInstance] of Object.entries(tools)) {
+      try {
+        serializedTools[name] = {
+          description: toolInstance.description,
+          parameters: serializeParameters(toolInstance.parameters),
+        };
+      } catch (error) {
+        console.error(`Error serializing tool ${name}:`, error);
+        serializedTools[name] = {
+          description: toolInstance.description,
+          parameters: {
+            error: `Failed to serialize parameters for tool ${name}`,
+          },
+        };
+      }
     }
 
-    // Ensure mcpUrls is an array
-    if (!Array.isArray(data.mcpUrls)) {
-      return NextResponse.json(
-        { error: "mcpUrls must be an array" },
-        { status: 400 }
-      );
-    }
-
-    const mcpData = {
-      mcpUrls: data.mcpUrls,
-    };
-
-    const writing = JSON.stringify(mcpData, null, 2);
-    console.log("Saving MCP URLs:", writing);
-    await writeFile(MCP_URLS_FILEPATH, writing);
-
-    return NextResponse.json(
-      { message: "MCP URLs saved successfully" },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      tools: serializedTools,
+      breakdown,
+    });
   } catch (error) {
-    console.error("Error saving MCP URLs:", error);
+    console.error("Error serializing tools:", error);
     return NextResponse.json(
-      { error: "Failed to save MCP URLs" },
+      { error: "Failed to serialize tools" },
       { status: 500 }
     );
   }
 }
 
 export async function DELETE() {
-  try {
-    // Attempt to delete the mcpurls.json file
-    await unlink(MCP_URLS_FILEPATH);
-    return NextResponse.json(
-      { message: "mcpurls.json deleted successfully" },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    // If the file does not exist, treat as success
-    if (error instanceof Error && error.message.includes("ENOENT")) {
-      return NextResponse.json(
-        { message: "mcpurls.json did not exist, nothing to delete" },
-        { status: 200 }
-      );
-    }
-    console.error("Error deleting mcpurls.json:", error);
-    return NextResponse.json(
-      { error: "Failed to delete mcpurls.json" },
-      { status: 500 }
-    );
-  }
+  // This endpoint is no longer needed since we're not using file storage
+  return NextResponse.json(
+    { message: "File storage is no longer used for MCP configuration" },
+    { status: 200 }
+  );
 }

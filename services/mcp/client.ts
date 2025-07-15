@@ -36,7 +36,13 @@ class MCPClient {
 
   public async getTools(): Promise<void> {
     try {
-      const response = await fetch("/api/tools");
+      const response = await fetch("/api/tools", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mcpUrls: this.mcpUrls }),
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch tools");
       }
@@ -59,29 +65,12 @@ class MCPClient {
   public async handleSave() {
     try {
       this.setIsLoading(true);
-      await this.saveServerConfig();
       this.setIsOpen(false);
       await this.getTools();
     } catch (error) {
-      console.error("Error saving server config:", error);
+      console.error("Error loading tools:", error);
     } finally {
       this.setIsLoading(false);
-    }
-  }
-  public async saveServerConfig() {
-    try {
-      const response = await fetch("/api/tools", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ mcpUrls: this.mcpUrls }),
-      });
-      const data = await response.json();
-      console.log("URLs saved:", data);
-    } catch (error) {
-      console.error("Error saving URLs:", error);
-      throw error;
     }
   }
 }
