@@ -453,12 +453,11 @@ export default function ChatPage() {
               currentCommitChildren.length === 0 ? (
                 <div className="text-center py-20 flex flex-col items-center gap-4">
                   <span className="text-muted-foreground">
-                    <span className="text-xl text-muted-foreground flex items-center gap-2 justify-center">
-                      Press{" "}
-                      <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                    <span className="text-4xl text-muted-foreground flex items-center gap-2 justify-center align-middle">
+                      <kbd className="pointer-events-none inline-flex select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono font-medium text-muted-foreground opacity-100 text-3xl">
                         Tab
                       </kbd>{" "}
-                      to type a message.
+                      to type a message
                     </span>
                   </span>
                   <span className="text-muted-foreground">
