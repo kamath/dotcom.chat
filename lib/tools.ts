@@ -1,7 +1,8 @@
-import { Tool } from "ai";
+import { Tool, tool } from "ai";
 import { experimental_createMCPClient as createMCPClient } from "ai";
 import { readFile } from "fs/promises";
 import { join } from "path";
+import { z } from "zod";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 interface McpUrl {
@@ -10,7 +11,30 @@ interface McpUrl {
   url: string;
 }
 
-const tools: Record<string, Tool> = {};
+const tools: Record<string, Tool> = {
+  dummyTool: tool({
+    description: "Dummy tool for demo purposes and testing.",
+    parameters: z.object({
+      location: z
+        .string()
+        .describe("The city and state, e.g. San Francisco, CA"),
+    }),
+    execute: async ({ location }) => {
+      // Mock weather data
+      const conditions = ["Sunny", "Cloudy", "Rainy", "Snowy", "Partly Cloudy"];
+      const temperature = Math.floor(Math.random() * 35) + 40; // 40-75°F
+      const humidity = Math.floor(Math.random() * 50) + 30; // 30-80%
+
+      return {
+        location,
+        temperature,
+        condition: conditions[Math.floor(Math.random() * conditions.length)],
+        humidity,
+        timestamp: new Date().toISOString(),
+      };
+    },
+  }),
+};
 
 export const getTools = async () => {
   try {

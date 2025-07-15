@@ -44,12 +44,7 @@ export function ChatMessage({
     })) || [];
 
   return (
-    <div
-      className={cn(
-        "flex items-start gap-3 p-2 rounded-lg",
-        isUser && "flex-row-reverse"
-      )}
-    >
+    <div className={cn("flex items-start gap-3", isUser && "flex-row-reverse")}>
       <Avatar
         className={cn(
           "h-8 w-8 mt-0.5 flex items-center justify-center",

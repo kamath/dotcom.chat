@@ -31,11 +31,8 @@ import {
 import {
   cmdkOpenAtom,
   dialogOpenAtom,
-  exportDialogOpenAtom,
   pendingMessageConfigAtom,
   keybindingsActiveAtom,
-  selectedCommitIdAtom,
-  dialogContentAtom,
 } from "@/services/commands/atoms";
 import { Export } from "@/components/export";
 import { Badge } from "@/components/ui/badge";
@@ -47,38 +44,6 @@ import Keybinding from "@/components/keybinding";
 import { cn } from "@/lib/utils";
 import { McpUrlManager } from "@/components/mcp-url-manager";
 import { breakdownAtom, isMcpConfigOpenAtom } from "@/services/mcp/atoms";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
-const ContentViewerDialog = () => {
-  const [open, setOpen] = useAtom(dialogOpenAtom);
-  const [content, setContent] = useAtom(dialogContentAtom);
-
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (!isOpen) {
-      setContent(null);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{content?.title}</DialogTitle>
-        </DialogHeader>
-        <ScrollArea className="max-h-[70vh]">
-          <pre className="text-sm whitespace-pre-wrap">{content?.content}</pre>
-          <ScrollBar />
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 // Function to format date into a pretty relative time
 const formatRelativeTime = (dateString: string): string => {
@@ -124,15 +89,12 @@ export default function ChatPage() {
   const lastUserCommit = useAtomValue(lastUserCommitAtom);
   const [isLoading, setIsLoading] = useAtom(isLoadingAtom);
   const [cmdkOpen, setCmdkOpen] = useAtom(cmdkOpenAtom);
-  const [, setDialogOpen] = useAtom(dialogOpenAtom);
-  const setExportDialogOpen = useSetAtom(exportDialogOpenAtom);
+  const setDialogOpen = useSetAtom(dialogOpenAtom);
   const setMcpConfigOpen = useSetAtom(isMcpConfigOpenAtom);
   const breakdown = useAtomValue(breakdownAtom);
   const [keybindingsActive, setKeybindingsActive] = useAtom(
     keybindingsActiveAtom
   );
-  const [selectedCommitId, setSelectedCommitId] = useAtom(selectedCommitIdAtom);
-  const setDialogContent = useSetAtom(dialogContentAtom);
 
   useEffect(() => {
     if (breakdown) {
@@ -278,18 +240,7 @@ export default function ChatPage() {
       }
       // If the input is focused, don't do anything except handle Esc
       if (document.activeElement === inputRef.current) return;
-
-      const activeElement = document.activeElement as HTMLElement;
-      const isInputFocused =
-        activeElement &&
-        (activeElement.tagName === "INPUT" ||
-          activeElement.tagName === "TEXTAREA");
-
-      if (
-        (event.key === "Tab" || event.key === "i") &&
-        !isInputFocused &&
-        keybindingsActive
-      ) {
+      if (event.key === "Tab" || event.key === "i") {
         event.preventDefault();
         inputRef.current?.focus();
       }
@@ -298,61 +249,7 @@ export default function ChatPage() {
         event.preventDefault();
         // Only open command palette if keybindings are active and not loading
         if (keybindingsActive && !isLoading) {
-          setCmdkOpen(true);
-        }
-      }
-
-      if (keybindingsActive && !isLoading) {
-        if (event.key === "j") {
-          const currentCommitIndex = commitThread.findIndex(
-            (c) => c.id === selectedCommitId
-          );
-          if (currentCommitIndex < commitThread.length - 1) {
-            setSelectedCommitId(commitThread[currentCommitIndex + 1].id);
-          }
-        }
-        if (event.key === "k") {
-          const currentCommitIndex = commitThread.findIndex(
-            (c) => c.id === selectedCommitId
-          );
-          if (currentCommitIndex > 0) {
-            setSelectedCommitId(commitThread[currentCommitIndex - 1].id);
-          }
-        }
-        if (event.key === "d") {
-          const selectedCommit = commitThread.find(
-            (c) => c.id === selectedCommitId
-          );
-          if (selectedCommit) {
-            setDialogContent({
-              title: "Markdown",
-              content: selectedCommit.metadata.message.content,
-            });
-            setDialogOpen(true);
-          }
-        }
-        if (event.key === "y") {
-          const selectedCommit = commitThread.find(
-            (c) => c.id === selectedCommitId
-          );
-          if (selectedCommit) {
-            navigator.clipboard.writeText(
-              selectedCommit.metadata.message.content
-            );
-          }
-        }
-        const lowerCaseJ = event.key.toLowerCase() === "j" && event.shiftKey;
-        if (lowerCaseJ) {
-          const selectedCommit = commitThread.find(
-            (c) => c.id === selectedCommitId
-          );
-          if (selectedCommit) {
-            setDialogContent({
-              title: "JSON",
-              content: JSON.stringify(selectedCommit.metadata.message, null, 2),
-            });
-            setDialogOpen(true);
-          }
+          setCmdkOpen((open) => !open);
         }
       }
 
@@ -375,7 +272,7 @@ export default function ChatPage() {
       // Configure Exports
       if (event.key === "e") {
         event.preventDefault();
-        setExportDialogOpen(true);
+        setDialogOpen(true);
       }
 
       if (commitHead) {
@@ -419,28 +316,17 @@ export default function ChatPage() {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [
-    keybindingsActive,
-    isLoading,
-    setCmdkOpen,
-    setKeybindingsActive,
-    commitThread,
-    selectedCommitId,
-    setSelectedCommitId,
-    setDialogContent,
-    setDialogOpen,
-    setExportDialogOpen,
     commitHead,
     commits,
-    append,
-    setIsLoading,
-    setMcpConfigOpen,
     currentCommitChildren,
+    setCmdkOpen,
+    isLoading,
+    cmdkOpen,
+    setMcpConfigOpen,
+    setDialogOpen,
+    keybindingsActive,
+    setKeybindingsActive,
   ]);
-
-  // When commit head changes, select it
-  useEffect(() => {
-    setSelectedCommitId(commitHead);
-  }, [commitHead, setSelectedCommitId]);
 
   return (
     <SidebarProvider>
@@ -455,7 +341,7 @@ export default function ChatPage() {
                 chatRef.current?.clearCommits(true);
               }}
             >
-              Flush all Chats
+              Clear
             </Button>
           </SidebarHeader>
           <SidebarContent className="flex-grow overflow-y-auto">
@@ -738,7 +624,7 @@ export default function ChatPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setExportDialogOpen(true)}
+                        onClick={() => setDialogOpen(true)}
                         disabled={!keybindingsActive || isLoading}
                       >
                         <Keybinding>E</Keybinding> Export Chat
@@ -752,7 +638,7 @@ export default function ChatPage() {
                           }}
                           disabled={!keybindingsActive || isLoading}
                         >
-                          <Keybinding>C</Keybinding> Clear
+                          <Keybinding>C</Keybinding> New Thread
                         </Button>
                       )}
                     </>
@@ -796,7 +682,6 @@ export default function ChatPage() {
 
         {/* Tools Sidebar on the right */}
         <ToolsSidebar />
-        <ContentViewerDialog />
       </div>
     </SidebarProvider>
   );

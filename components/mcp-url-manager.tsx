@@ -22,7 +22,6 @@ import {
 } from "@/services/mcp/atoms";
 import { keybindingsActiveAtom } from "@/services/commands/atoms";
 import mcpClient from "@/services/mcp/client";
-import Keybinding from "@/components/keybinding";
 
 export function McpUrlManager() {
   const [urls, setUrls] = useAtom(mcpUrlsAtom);
@@ -117,11 +116,6 @@ export function McpUrlManager() {
     setValidationError("");
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    handleAddUrl();
-  };
-
   const handleDeleteUrl = (id: string) => {
     const updatedUrls = (urls || []).filter((url) => url.id !== id);
     setUrls(updatedUrls);
@@ -135,13 +129,10 @@ export function McpUrlManager() {
     }
   };
 
-  const truncateUrl = (url: string) => {
-    const mcpPart = "/mcp";
-    const mcpIndex = url.indexOf(mcpPart);
-    if (mcpIndex !== -1) {
-      return url.substring(0, mcpIndex + mcpPart.length);
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && newName && newUrl) {
+      handleAddUrl();
     }
-    return url;
   };
 
   return (
@@ -150,47 +141,33 @@ export function McpUrlManager() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5" />
-            Add Streamable HTTP MCP Servers
+            MCP Server URLs
           </DialogTitle>
           <DialogDescription>
-            Add MCP server URLs that support Streamable HTTP transport. URLs
+            Add MCP server URLs that support Streamable HTTP/SSE transport. URLs
             should point to valid MCP endpoints (usually ending in{" "}
-            <code>/mcp</code>).
-            <br />
-            <br />
-            Discover 8,000+ MCP servers at{" "}
-            <a
-              href="https://smithery.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-blue-600 hover:text-blue-800"
-            >
-              smithery.ai
-            </a>
-            .
+            <code>/mcp</code>). These servers will be connected to provide
+            additional tools.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Add new URL section */}
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-3 p-4 border rounded-lg bg-muted/50"
-          >
+          <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
             <h4 className="font-medium">Add New MCP Server</h4>
             <div className="space-y-3">
               <Input
                 placeholder="Server name (e.g., Weather API)"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                onBlur={() => setKeybindingsActive(false)}
+                onKeyPress={handleKeyPress}
                 className="w-full"
               />
               <Input
                 placeholder="https://your-mcp-server.com/mcp"
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
-                onBlur={() => setKeybindingsActive(false)}
+                onKeyPress={handleKeyPress}
                 className="w-full font-mono text-sm"
               />
             </div>
@@ -206,12 +183,11 @@ export function McpUrlManager() {
                 {validationError}
               </div>
             )}
-            <Button type="submit" size="sm" className="w-full">
+            <Button onClick={handleAddUrl} size="sm" className="w-full">
               <Plus className="h-4 w-4" />
               Add URL
-              <Keybinding>↵</Keybinding>
             </Button>
-          </form>
+          </div>
 
           {/* Existing URLs list */}
           <div className="space-y-2">
@@ -224,7 +200,7 @@ export function McpUrlManager() {
                   <div className="flex flex-col gap-1">
                     <p className="font-medium">{url.name}</p>
                     <p className="text-sm text-muted-foreground font-mono">
-                      {truncateUrl(url.url)}
+                      {url.url}
                     </p>
                   </div>
                   <Button

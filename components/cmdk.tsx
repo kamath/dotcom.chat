@@ -45,16 +45,6 @@ const setExportDialogOpen = (value: boolean) => {
   store.set(dialogOpenAtom, value);
 };
 
-const getIsLoading = () => {
-  const store = getDefaultStore();
-  // Assuming you have an isLoading atom somewhere, e.g. in gitchat/atoms
-  // If not, you need to define it.
-  // For now, let's assume it exists for the logic to make sense.
-  // import { isLoadingAtom } from "@/services/gitchat/atoms";
-  // return store.get(isLoadingAtom);
-  return false; // Placeholder
-};
-
 const HIERARCHY_SEPARATOR = " --->>> ";
 
 const parentIdAtom = atom<string | null>(null);
@@ -74,7 +64,7 @@ const commandTreeAtom = atomWithStorage<Command[]>("commandTree", [
     name: "Export Chat",
     id: "export-chat",
     onSelect: () => {
-      if (!getIsLoading() && gitChat.commitThread.length > 0) {
+      if (gitChat.commitThread.length > 0) {
         setExportDialogOpen(true);
       } else {
         alert("Please wait for the current operation to complete.");
@@ -82,7 +72,7 @@ const commandTreeAtom = atomWithStorage<Command[]>("commandTree", [
     },
   },
   {
-    name: "Clear",
+    name: "New Thread",
     id: "new-thread",
     onSelect: () => {
       gitChat.clearCommits(true);
