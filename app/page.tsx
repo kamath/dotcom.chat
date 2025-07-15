@@ -44,6 +44,7 @@ import Keybinding from "@/components/keybinding";
 import { cn } from "@/lib/utils";
 import { McpUrlManager } from "@/components/mcp-url-manager";
 import { breakdownAtom, isMcpConfigOpenAtom } from "@/services/mcp/atoms";
+import { GitHubStars } from "@/components/github-stars";
 
 // Function to format date into a pretty relative time
 const formatRelativeTime = (dateString: string): string => {
@@ -435,13 +436,8 @@ export default function ChatPage() {
         {/* Main Chat Content */}
         <div className="flex flex-col flex-1 h-full overflow-x-auto">
           <header className="p-4 border-b flex gap-2 items-center">
-            <h1 className="text-xl font-semibold">dotcomdotchat</h1>
-            <iframe
-              src="https://ghbtns.com/github-btn.html?user=twbs&repo=bootstrap&type=star&count=true&size=large"
-              width="170"
-              height="30"
-              title="GitHub"
-            ></iframe>
+            <h1 className="text-xl font-semibold">dotcom.chat</h1>
+            <GitHubStars owner="kamath" repo="dotcom.chat" />
           </header>
 
           <ScrollArea className="flex-1 p-4 space-y-4" ref={scrollAreaRef}>

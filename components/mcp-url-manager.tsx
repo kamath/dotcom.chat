@@ -144,10 +144,23 @@ export function McpUrlManager() {
             MCP Server URLs
           </DialogTitle>
           <DialogDescription>
-            Add MCP server URLs that support Streamable HTTP/SSE transport. URLs
+            Add MCP server URLs that support Streamable HTTP transport. URLs
             should point to valid MCP endpoints (usually ending in{" "}
-            <code>/mcp</code>). These servers will be connected to provide
-            additional tools. URLs are sent with each chat request.
+            <code>/mcp</code>). Config is stored fully locally.
+            <br />
+            <br />
+            <span className="text-sm font-bold">
+              New to MCP?{" "}
+              <a
+                href="https://smithery.ai/server/exa"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-blue-600"
+              >
+                Try Exa from Smithery for free
+              </a>{" "}
+              to enable web search.
+            </span>
           </DialogDescription>
         </DialogHeader>
 

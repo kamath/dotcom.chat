@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "dotcomdotchat",
+  title: "dotcom.chat",
   description:
     "A minimal, fully-NextJS-compatible MCP client. Built with love by Smithery.AI",
 };
