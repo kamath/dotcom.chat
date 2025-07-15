@@ -43,7 +43,11 @@ import { ToolsSidebar } from "@/components/tools-sidebar";
 import Keybinding from "@/components/keybinding";
 import { cn } from "@/lib/utils";
 import { McpUrlManager } from "@/components/mcp-url-manager";
-import { breakdownAtom, isMcpConfigOpenAtom } from "@/services/mcp/atoms";
+import {
+  breakdownAtom,
+  isMcpConfigOpenAtom,
+  mcpUrlsAtom,
+} from "@/services/mcp/atoms";
 import { GitHubStars } from "@/components/github-stars";
 
 // Function to format date into a pretty relative time
@@ -93,6 +97,7 @@ export default function ChatPage() {
   const setDialogOpen = useSetAtom(dialogOpenAtom);
   const setMcpConfigOpen = useSetAtom(isMcpConfigOpenAtom);
   const breakdown = useAtomValue(breakdownAtom);
+  const mcpUrls = useAtomValue(mcpUrlsAtom);
   const [keybindingsActive, setKeybindingsActive] = useAtom(
     keybindingsActiveAtom
   );
@@ -138,6 +143,7 @@ export default function ChatPage() {
       id: commitHead ?? undefined,
       body: {
         pendingMessageConfig,
+        mcpUrls,
       },
       onToolCall: (arg) => {
         console.debug("TOOL CALL", arg);

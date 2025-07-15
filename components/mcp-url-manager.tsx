@@ -10,27 +10,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Plus, Trash2, Globe, AlertCircle } from "lucide-react";
 import {
   errorAtom,
   isMcpConfigOpenAtom,
-  isMcpLoadingAtom,
   mcpUrlsAtom,
+  reloadToolsAtom,
   type McpUrl,
 } from "@/services/mcp/atoms";
 import { keybindingsActiveAtom } from "@/services/commands/atoms";
-import mcpClient from "@/services/mcp/client";
 
 export function McpUrlManager() {
   const [urls, setUrls] = useAtom(mcpUrlsAtom);
   const [isOpen, setIsOpen] = useAtom(isMcpConfigOpenAtom);
-  const isLoading = useAtomValue(isMcpLoadingAtom);
   const error = useAtomValue(errorAtom);
   const setKeybindingsActive = useSetAtom(keybindingsActiveAtom);
+  const setReloadTools = useSetAtom(reloadToolsAtom);
 
-  const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [validationError, setValidationError] = useState("");
 
@@ -49,11 +47,73 @@ export function McpUrlManager() {
   // Reset form when dialog opens
   useEffect(() => {
     if (isOpen) {
-      setNewName("");
       setNewUrl("");
       setValidationError("");
     }
   }, [isOpen]);
+
+  // Migrate existing URLs to use new naming convention (run once on mount)
+  const hasMigrated = useRef(false);
+  useEffect(() => {
+    if (!hasMigrated.current && urls && urls.length > 0) {
+      const needsUpdate = urls.some((url) => {
+        const newName = generateServerName(url.url);
+        return url.name !== newName;
+      });
+
+      if (needsUpdate) {
+        const updatedUrls = urls.map((url) => ({
+          ...url,
+          name: generateServerName(url.url),
+        }));
+        setUrls(updatedUrls);
+        // Trigger a tools reload to update the sidebar with new names
+        setReloadTools(true);
+      }
+      hasMigrated.current = true;
+    }
+  }, [urls, setUrls]);
+
+  const generateServerName = (url: string): string => {
+    try {
+      const urlObject = new URL(url);
+
+      // Check if it's a Smithery server URL
+      if (urlObject.hostname === "server.smithery.ai") {
+        // Handle @org/repo format
+        const orgRepoMatch = urlObject.pathname.match(/^\/(@[^/]+\/[^/]+)/);
+        if (orgRepoMatch) {
+          return orgRepoMatch[1]; // Returns @org/repo
+        }
+
+        // Handle simple name format like /exa/mcp
+        const simpleMatch = urlObject.pathname.match(/^\/([^/]+)/);
+        if (simpleMatch && simpleMatch[1] !== "mcp") {
+          return simpleMatch[1]; // Returns just "exa"
+        }
+      }
+
+      // For other URLs, create a truncated display name
+      const domain = urlObject.hostname;
+      const path = urlObject.pathname;
+
+      // If path is just "/mcp" or similar, just show domain
+      if (path === "/mcp" || path === "/" || path === "") {
+        return domain;
+      }
+
+      // Truncate long paths
+      const fullPath = domain + path;
+      if (fullPath.length > 40) {
+        return fullPath.substring(0, 37) + "...";
+      }
+
+      return fullPath;
+    } catch {
+      // If URL parsing fails, just return a truncated version of the input
+      return url.length > 40 ? url.substring(0, 37) + "..." : url;
+    }
+  };
 
   const validateUrl = (url: string): { valid: boolean; message?: string } => {
     try {
@@ -79,11 +139,6 @@ export function McpUrlManager() {
   };
 
   const handleAddUrl = () => {
-    if (!newName.trim()) {
-      setValidationError("Server name is required");
-      return;
-    }
-
     if (!newUrl.trim()) {
       setValidationError("URL is required");
       return;
@@ -103,15 +158,16 @@ export function McpUrlManager() {
       // Don't return, let user proceed with warning
     }
 
+    const serverName = generateServerName(newUrl.trim());
+
     const newUrlObj: McpUrl = {
       id: crypto.randomUUID(),
-      name: newName.trim(),
+      name: serverName,
       url: newUrl.trim(),
     };
 
     const updatedUrls = [...(urls || []), newUrlObj];
     setUrls(updatedUrls);
-    setNewName("");
     setNewUrl("");
     setValidationError("");
   };
@@ -121,16 +177,8 @@ export function McpUrlManager() {
     setUrls(updatedUrls);
   };
 
-  const handleTestConnection = async () => {
-    try {
-      await mcpClient.getTools();
-    } catch (error) {
-      console.error("Error testing connection:", error);
-    }
-  };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && newName && newUrl) {
+    if (e.key === "Enter" && newUrl) {
       handleAddUrl();
     }
   };
@@ -169,13 +217,6 @@ export function McpUrlManager() {
           <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
             <h4 className="font-medium">Add New MCP Server</h4>
             <div className="space-y-3">
-              <Input
-                placeholder="Server name (e.g., Weather API)"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="w-full"
-              />
               <Input
                 placeholder="https://your-mcp-server.com/mcp"
                 value={newUrl}
@@ -236,13 +277,6 @@ export function McpUrlManager() {
         {error && <p className="text-sm text-red-500">{error}</p>}
 
         <DialogFooter>
-          <Button
-            onClick={handleTestConnection}
-            disabled={isLoading}
-            variant="outline"
-          >
-            {isLoading ? "Testing..." : "Test Connection"}
-          </Button>
           <Button onClick={() => setIsOpen(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
