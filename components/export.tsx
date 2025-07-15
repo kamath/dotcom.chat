@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai/react";
 import { commitThreadAtom } from "@/services/gitchat/atoms";
 import {
-  dialogOpenAtom,
+  exportDialogOpenAtom,
   keybindingsActiveAtom,
 } from "@/services/commands/atoms";
 import { Commit } from "@/services/gitchat/client";
@@ -21,7 +21,7 @@ export const Export = () => {
   const [transcriptFormat, setTranscriptFormat] = useState("markdown");
   const [transcriptContent, setTranscriptContent] = useState("");
   const commits = useAtomValue(commitThreadAtom);
-  const [dialogOpen, setDialogOpen] = useAtom(dialogOpenAtom);
+  const [dialogOpen, setDialogOpen] = useAtom(exportDialogOpenAtom);
   const setKeybindingsActive = useSetAtom(keybindingsActiveAtom);
 
   useEffect(() => {

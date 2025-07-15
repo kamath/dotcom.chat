@@ -82,7 +82,7 @@ const commandTreeAtom = atomWithStorage<Command[]>("commandTree", [
     },
   },
   {
-    name: "New Thread",
+    name: "Clear",
     id: "new-thread",
     onSelect: () => {
       gitChat.clearCommits(true);
