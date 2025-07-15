@@ -238,8 +238,15 @@ export default function ChatPage() {
         setKeybindingsActive(true);
         return;
       }
-      // If the input is focused, don't do anything except handle Esc
-      if (document.activeElement === inputRef.current) return;
+      // If any input or textarea is focused, don't do anything except handle Esc
+      const activeElement = document.activeElement as HTMLElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA")
+      ) {
+        return;
+      }
       if (event.key === "Tab" || event.key === "i") {
         event.preventDefault();
         inputRef.current?.focus();
