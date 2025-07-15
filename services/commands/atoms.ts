@@ -4,7 +4,7 @@ import { atomWithStorage } from "jotai/utils";
 
 export const modelNameAtom = atomWithStorage<AvailableModel>(
   "modelName",
-  "google/gemini-2.0-flash"
+  "anthropic/claude-sonnet-4-20250514"
 );
 
 export const pendingMessageConfigAtom = atom((get) => {
