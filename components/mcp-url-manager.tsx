@@ -95,7 +95,13 @@ export function McpUrlManager() {
 
       // For other URLs, create a truncated display name
       const domain = urlObject.hostname;
-      const path = urlObject.pathname;
+      let path = urlObject.pathname;
+
+      // Truncate anything after "/mcp"
+      const mcpIndex = path.indexOf("/mcp");
+      if (mcpIndex !== -1) {
+        path = path.substring(0, mcpIndex + 4); // Keep "/mcp" but remove everything after
+      }
 
       // If path is just "/mcp" or similar, just show domain
       if (path === "/mcp" || path === "/" || path === "") {
@@ -112,6 +118,25 @@ export function McpUrlManager() {
     } catch {
       // If URL parsing fails, just return a truncated version of the input
       return url.length > 40 ? url.substring(0, 37) + "..." : url;
+    }
+  };
+
+  const getCleanUrlForDisplay = (url: string): string => {
+    try {
+      const urlObject = new URL(url);
+      let path = urlObject.pathname;
+
+      // Truncate anything after "/mcp"
+      const mcpIndex = path.indexOf("/mcp");
+      if (mcpIndex !== -1) {
+        path = path.substring(0, mcpIndex + 4); // Keep "/mcp" but remove everything after
+      }
+
+      // Return clean URL without query parameters
+      return `${urlObject.protocol}//${urlObject.hostname}${path}`;
+    } catch {
+      // If URL parsing fails, just return the original
+      return url;
     }
   };
 
@@ -254,7 +279,7 @@ export function McpUrlManager() {
                   <div className="flex flex-col gap-1">
                     <p className="font-medium">{url.name}</p>
                     <p className="text-sm text-muted-foreground font-mono">
-                      {url.url}
+                      {getCleanUrlForDisplay(url.url)}
                     </p>
                   </div>
                   <Button
