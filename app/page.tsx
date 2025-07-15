@@ -617,11 +617,6 @@ export default function ChatPage() {
           <div className="p-4 border-t">
             <div className="max-w-3xl mx-auto">
               <div className="flex justify-between items-center mb-2 gap-4">
-                <div>
-                  <h1 className="text-sm text-muted-foreground">
-                    Model: {pendingMessageConfig.modelName}
-                  </h1>
-                </div>
                 <div className="flex gap-2">
                   <McpUrlManager />
                   <Button
@@ -657,6 +652,11 @@ export default function ChatPage() {
                       )}
                     </>
                   )}
+                </div>
+                <div>
+                  <h1 className="text-sm text-muted-foreground">
+                    Model: {pendingMessageConfig.modelName}
+                  </h1>
                 </div>
               </div>
               <form onSubmit={onSubmit} className="flex gap-2">
