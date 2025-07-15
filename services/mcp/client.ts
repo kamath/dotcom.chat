@@ -6,7 +6,7 @@ import {
   errorAtom,
   breakdownAtom,
   isMcpConfigOpenAtom,
-  serverConfigAtom,
+  mcpUrlsAtom,
 } from "./atoms";
 
 class MCPClient {
@@ -29,21 +29,9 @@ class MCPClient {
   private setIsOpen(isOpen: boolean) {
     this.state.set(isMcpConfigOpenAtom, isOpen);
   }
-  private setServerConfig(serverConfig: Record<string, unknown>) {
-    this.state.set(serverConfigAtom, serverConfig);
-  }
 
-  private get serverConfig() {
-    return this.state.get(serverConfigAtom);
-  }
-
-  public parseServerConfig(mcpServersText: string) {
-    try {
-      const parsed = JSON.parse(mcpServersText);
-      this.setServerConfig(parsed);
-    } catch {
-      this.setError("Invalid JSON");
-    }
+  private get mcpUrls() {
+    return this.state.get(mcpUrlsAtom);
   }
 
   public async getTools(): Promise<void> {
@@ -55,7 +43,6 @@ class MCPClient {
       const data = await response.json();
       this.setTools({ breakdown: data.breakdown });
       this.setBreakdown(data.breakdown);
-      this.setServerConfig(data.config || { mcpServers: {} });
     } catch (err) {
       this.setError(
         err instanceof Error ? err.message : "Failed to load tools"
@@ -88,12 +75,12 @@ class MCPClient {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(this.serverConfig),
+        body: JSON.stringify({ mcpUrls: this.mcpUrls }),
       });
       const data = await response.json();
-      console.log("Tools saved:", data);
+      console.log("URLs saved:", data);
     } catch (error) {
-      console.error("Error saving tools:", error);
+      console.error("Error saving URLs:", error);
       throw error;
     }
   }

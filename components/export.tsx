@@ -9,9 +9,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useCallback, useEffect, useState } from "react";
-import { useAtom, useAtomValue } from "jotai/react";
+import { useAtom, useAtomValue, useSetAtom } from "jotai/react";
 import { commitThreadAtom } from "@/services/gitchat/atoms";
-import { dialogOpenAtom } from "@/services/commands/atoms";
+import {
+  dialogOpenAtom,
+  keybindingsActiveAtom,
+} from "@/services/commands/atoms";
 import { Commit } from "@/services/gitchat/client";
 
 export const Export = () => {
@@ -19,6 +22,18 @@ export const Export = () => {
   const [transcriptContent, setTranscriptContent] = useState("");
   const commits = useAtomValue(commitThreadAtom);
   const [dialogOpen, setDialogOpen] = useAtom(dialogOpenAtom);
+  const setKeybindingsActive = useSetAtom(keybindingsActiveAtom);
+
+  useEffect(() => {
+    if (dialogOpen) {
+      setKeybindingsActive(false);
+    } else {
+      setKeybindingsActive(true);
+    }
+    return () => {
+      setKeybindingsActive(true);
+    };
+  }, [dialogOpen, setKeybindingsActive]);
 
   const formatToJson = useCallback((cms: Commit[]): string => {
     return JSON.stringify(cms, null, 2);

@@ -1,9 +1,45 @@
-import * as React from "react"
+import * as React from "react";
+import { useAtom } from "jotai";
+import { keybindingsActiveAtom } from "@/services/commands/atoms";
+import { cn } from "@/lib/utils";
 
-import { cn } from "@/lib/utils"
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  showPressEsc?: boolean;
+}
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  (
+    {
+      className,
+      type,
+      placeholder,
+      onFocus,
+      onBlur,
+      showPressEsc = false,
+      ...props
+    },
+    ref
+  ) => {
+    const [keybindingsActive, setKeybindingsActive] = useAtom(
+      keybindingsActiveAtom
+    );
+
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+      setKeybindingsActive(false);
+      onFocus?.(e);
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      setKeybindingsActive(true);
+      onBlur?.(e);
+    };
+
+    const displayPlaceholder =
+      !keybindingsActive && showPressEsc
+        ? "Press Esc to reactivate keybindings"
+        : placeholder;
+
     return (
       <input
         type={type}
@@ -12,11 +48,14 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className
         )}
         ref={ref}
+        placeholder={displayPlaceholder}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         {...props}
       />
-    )
+    );
   }
-)
-Input.displayName = "Input"
+);
+Input.displayName = "Input";
 
-export { Input }
+export { Input };

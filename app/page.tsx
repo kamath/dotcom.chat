@@ -32,6 +32,7 @@ import {
   cmdkOpenAtom,
   dialogOpenAtom,
   pendingMessageConfigAtom,
+  keybindingsActiveAtom,
 } from "@/services/commands/atoms";
 import { Export } from "@/components/export";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +42,7 @@ import type { GitChat, Commit } from "@/services/gitchat/client";
 import { ToolsSidebar } from "@/components/tools-sidebar";
 import Keybinding from "@/components/keybinding";
 import { cn } from "@/lib/utils";
-import { ServerConfigDialog } from "@/components/server-config-dialog";
+import { McpUrlManager } from "@/components/mcp-url-manager";
 import { breakdownAtom, isMcpConfigOpenAtom } from "@/services/mcp/atoms";
 
 // Function to format date into a pretty relative time
@@ -91,6 +92,9 @@ export default function ChatPage() {
   const setDialogOpen = useSetAtom(dialogOpenAtom);
   const setMcpConfigOpen = useSetAtom(isMcpConfigOpenAtom);
   const breakdown = useAtomValue(breakdownAtom);
+  const [keybindingsActive, setKeybindingsActive] = useAtom(
+    keybindingsActiveAtom
+  );
 
   useEffect(() => {
     if (breakdown) {
@@ -154,6 +158,21 @@ export default function ChatPage() {
     }
   }, [status, setIsLoading]);
 
+  // Automatically reactivate keybindings when streaming completes (if no input is focused)
+  useEffect(() => {
+    if (!isLoading) {
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA");
+
+      if (!isInputFocused) {
+        setKeybindingsActive(true);
+      }
+    }
+  }, [isLoading, setKeybindingsActive]);
+
   const onSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -202,13 +221,24 @@ export default function ChatPage() {
     setMessages(commitThread.map((c) => c.metadata.message));
   }, [commitThread, setMessages]);
 
-  // Effect to focus input on Tab key press
+  // Effect to focus input on Tab key press and handle global escape
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Handle Esc key globally to reactivate keybindings
       if (event.key === "Escape") {
-        inputRef.current?.blur();
+        // Blur any focused input/textarea
+        const activeElement = document.activeElement as HTMLElement;
+        if (
+          activeElement &&
+          (activeElement.tagName === "INPUT" ||
+            activeElement.tagName === "TEXTAREA")
+        ) {
+          activeElement.blur();
+        }
+        setKeybindingsActive(true);
+        return;
       }
-      // If the input is focused, don't do anything
+      // If the input is focused, don't do anything except handle Esc
       if (document.activeElement === inputRef.current) return;
       if (event.key === "Tab" || event.key === "i") {
         event.preventDefault();
@@ -217,11 +247,14 @@ export default function ChatPage() {
 
       if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
-        setCmdkOpen((open) => !open);
+        // Only open command palette if keybindings are active and not loading
+        if (keybindingsActive && !isLoading) {
+          setCmdkOpen((open) => !open);
+        }
       }
 
       // If there's a message streaming, pause all key presses below this
-      if (isLoading || cmdkOpen) return;
+      if (isLoading || cmdkOpen || !keybindingsActive) return;
       console.log("event.key", event.key, isLoading, cmdkOpen);
 
       // Clear the chat (start a new thread)
@@ -291,6 +324,8 @@ export default function ChatPage() {
     cmdkOpen,
     setMcpConfigOpen,
     setDialogOpen,
+    keybindingsActive,
+    setKeybindingsActive,
   ]);
 
   return (
@@ -344,14 +379,14 @@ export default function ChatPage() {
                   <div
                     key={commit.id}
                     onClick={() => {
-                      if (isLoading) return;
+                      if (isLoading || !keybindingsActive) return;
                       chatRef.current?.setCommitHead(commit.id);
                       setMessages(commitThread.map((c) => c.metadata.message));
                     }}
                     className={cn(
                       `px-4 py-3 rounded-md ${bgColor}`,
-                      isLoading
-                        ? "cursor-default"
+                      isLoading || !keybindingsActive
+                        ? "cursor-default opacity-50"
                         : "cursor-pointer hover:bg-gray-100 dark:hover:bg-muted"
                     )}
                   >
@@ -449,6 +484,7 @@ export default function ChatPage() {
                             onClick={() =>
                               chatRef.current?.redoLastUserCommit()
                             }
+                            disabled={!keybindingsActive || isLoading}
                           >
                             <Keybinding>U</Keybinding> Undo
                           </Button>
@@ -461,6 +497,7 @@ export default function ChatPage() {
                                 append(commit.metadata.message);
                               }
                             }}
+                            disabled={!keybindingsActive || isLoading}
                           >
                             <Keybinding>R</Keybinding> Retry
                           </Button>
@@ -504,12 +541,18 @@ export default function ChatPage() {
                         <div
                           key={commit.id}
                           onClick={() => {
+                            if (isLoading || !keybindingsActive) return;
                             chatRef.current?.setCommitHead(commit.id);
                             setMessages(
                               commitThread.map((c) => c.metadata.message)
                             );
                           }}
-                          className={`cursor-pointer px-4 py-3 hover:bg-gray-100 dark:hover:bg-muted rounded-md ${bgColor} w-64`}
+                          className={cn(
+                            `px-4 py-3 rounded-md ${bgColor} w-64`,
+                            isLoading || !keybindingsActive
+                              ? "cursor-default opacity-50"
+                              : "cursor-pointer hover:bg-gray-100 dark:hover:bg-muted"
+                          )}
                         >
                           <div className="flex flex-col gap-1 text-sm text-muted-foreground">
                             <span className="text-muted-foreground truncate">
@@ -566,11 +609,12 @@ export default function ChatPage() {
                   </h1>
                 </div>
                 <div className="flex gap-2">
-                  <ServerConfigDialog />
+                  <McpUrlManager />
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setMcpConfigOpen(true)}
+                    disabled={!keybindingsActive || isLoading}
                   >
                     <Keybinding>M</Keybinding> MCP
                   </Button>
@@ -581,6 +625,7 @@ export default function ChatPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => setDialogOpen(true)}
+                        disabled={!keybindingsActive || isLoading}
                       >
                         <Keybinding>E</Keybinding> Export Chat
                       </Button>
@@ -591,6 +636,7 @@ export default function ChatPage() {
                           onClick={() => {
                             chatRef.current?.clearCommits();
                           }}
+                          disabled={!keybindingsActive || isLoading}
                         >
                           <Keybinding>C</Keybinding> New Thread
                         </Button>
@@ -608,6 +654,7 @@ export default function ChatPage() {
                   className="flex-1"
                   disabled={isLoading}
                   autoFocus
+                  showPressEsc={true}
                 />
                 {status === "streaming" ? (
                   <Button

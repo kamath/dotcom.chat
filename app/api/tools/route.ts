@@ -114,17 +114,17 @@ function serializeParameters(
   return serializedParams;
 }
 
-// Write the data to mcptools.json
-const MCP_TOOLS_FILEPATH = join(process.cwd(), "mcptools.json");
-async function getExistingTools() {
+// Write the data to mcpurls.json
+const MCP_URLS_FILEPATH = join(process.cwd(), "mcpurls.json");
+async function getExistingUrls() {
   try {
-    const content = await readFile(MCP_TOOLS_FILEPATH, "utf8");
+    const content = await readFile(MCP_URLS_FILEPATH, "utf8");
     if (!content.trim()) {
-      return { mcpServers: {} };
+      return { mcpUrls: [] };
     }
     return JSON.parse(content);
   } catch {
-    return { mcpServers: {} };
+    return { mcpUrls: [] };
   }
 }
 
@@ -158,7 +158,7 @@ export async function GET() {
     return NextResponse.json({
       tools: serializedTools,
       breakdown,
-      config: await getExistingTools(),
+      config: await getExistingUrls(),
     });
   } catch (error) {
     console.error("Error serializing tools:", error);
@@ -175,45 +175,35 @@ export async function POST(request: Request) {
 
     console.log("DATA", data);
 
-    // Validate that we received valid JSON data
+    // Validate that we received valid data
     if (!data || typeof data !== "object") {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    // Ensure mcpUrls is an array
+    if (!Array.isArray(data.mcpUrls)) {
       return NextResponse.json(
-        { error: "Invalid JSON payload" },
+        { error: "mcpUrls must be an array" },
         { status: 400 }
       );
     }
 
-    let existingTools: { mcpServers: Record<string, unknown> } = {
-      mcpServers: {},
+    const mcpData = {
+      mcpUrls: data.mcpUrls,
     };
-    try {
-      existingTools = await getExistingTools();
-    } catch {
-      console.log("MCP tools file doesn't exist, creating it");
-      await writeFile(MCP_TOOLS_FILEPATH, "{}");
-    }
 
-    const writing = JSON.stringify(
-      {
-        mcpServers: {
-          ...(existingTools.mcpServers || {}),
-          ...data.mcpServers,
-        },
-      },
-      null,
-      2
-    );
-    console.log("WITH API", process.env.BROWSERBASE_API_KEY, writing);
-    await writeFile(MCP_TOOLS_FILEPATH, writing);
+    const writing = JSON.stringify(mcpData, null, 2);
+    console.log("Saving MCP URLs:", writing);
+    await writeFile(MCP_URLS_FILEPATH, writing);
 
     return NextResponse.json(
-      { message: "Tools data saved successfully" },
+      { message: "MCP URLs saved successfully" },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error saving tools data:", error);
+    console.error("Error saving MCP URLs:", error);
     return NextResponse.json(
-      { error: "Failed to save tools data" },
+      { error: "Failed to save MCP URLs" },
       { status: 500 }
     );
   }
@@ -221,23 +211,23 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   try {
-    // Attempt to delete the mcptools.json file
-    await unlink(MCP_TOOLS_FILEPATH);
+    // Attempt to delete the mcpurls.json file
+    await unlink(MCP_URLS_FILEPATH);
     return NextResponse.json(
-      { message: "mcptools.json deleted successfully" },
+      { message: "mcpurls.json deleted successfully" },
       { status: 200 }
     );
   } catch (error: unknown) {
     // If the file does not exist, treat as success
     if (error instanceof Error && error.message.includes("ENOENT")) {
       return NextResponse.json(
-        { message: "mcptools.json did not exist, nothing to delete" },
+        { message: "mcpurls.json did not exist, nothing to delete" },
         { status: 200 }
       );
     }
-    console.error("Error deleting mcptools.json:", error);
+    console.error("Error deleting mcpurls.json:", error);
     return NextResponse.json(
-      { error: "Failed to delete mcptools.json" },
+      { error: "Failed to delete mcpurls.json" },
       { status: 500 }
     );
   }

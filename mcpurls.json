@@ -1,0 +1,14 @@
+{
+  "mcpUrls": [
+    {
+      "id": "190cbcf0-be3a-46b3-8ec1-720fa02ad0da",
+      "name": "Exa",
+      "url": "https://server.smithery.ai/exa/mcp?api_key=f40c4ce5-3a6d-4749-9a3c-6505ce28e66c&profile=dual-gayal-jXnCNQ"
+    },
+    {
+      "id": "30bbbe70-dbbb-416e-8bb8-2d065bb2a474",
+      "name": "Notion",
+      "url": "https://server.smithery.ai/@smithery/notion/mcp?api_key=f40c4ce5-3a6d-4749-9a3c-6505ce28e66c&profile=dual-gayal-jXnCNQ"
+    }
+  ]
+}

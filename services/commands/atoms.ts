@@ -17,3 +17,6 @@ export const pendingMessageConfigAtom = atom((get) => {
 
 export const cmdkOpenAtom = atom(false);
 export const dialogOpenAtom = atom(false);
+
+// Global state for keybindings - when true, keybindings are active
+export const keybindingsActiveAtom = atom(true);

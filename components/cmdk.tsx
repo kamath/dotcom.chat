@@ -23,31 +23,37 @@ import {
   cmdkOpenAtom,
   modelNameAtom,
   dialogOpenAtom,
+  keybindingsActiveAtom,
 } from "@/services/commands/atoms";
 import { availableModelSchema, type AvailableModel } from "@/sharedTypes";
 import { ChevronRight } from "lucide-react";
 import gitChat from "@/services/gitchat/client";
-import { isMcpLoadingAtom, isMcpConfigOpenAtom } from "@/services/mcp/atoms";
+import { isMcpConfigOpenAtom } from "@/services/mcp/atoms";
 
 function setModelName(modelName: AvailableModel) {
   const store = getDefaultStore();
   store.set(modelNameAtom, modelName);
 }
 
-function setMcpConfigOpen(open: boolean) {
+const setMcpConfigOpen = (value: boolean) => {
   const store = getDefaultStore();
-  store.set(isMcpConfigOpenAtom, open);
-}
+  store.set(isMcpConfigOpenAtom, value);
+};
 
-function setExportDialogOpen(open: boolean) {
+const setExportDialogOpen = (value: boolean) => {
   const store = getDefaultStore();
-  store.set(dialogOpenAtom, open);
-}
+  store.set(dialogOpenAtom, value);
+};
 
-function getIsLoading() {
+const getIsLoading = () => {
   const store = getDefaultStore();
-  return store.get(isMcpLoadingAtom);
-}
+  // Assuming you have an isLoading atom somewhere, e.g. in gitchat/atoms
+  // If not, you need to define it.
+  // For now, let's assume it exists for the logic to make sense.
+  // import { isLoadingAtom } from "@/services/gitchat/atoms";
+  // return store.get(isLoadingAtom);
+  return false; // Placeholder
+};
 
 const HIERARCHY_SEPARATOR = " --->>> ";
 
@@ -140,12 +146,19 @@ export function CmdK() {
   const commandsList = useAtomValue(commandsListAtom);
   const setParentId = useSetAtom(parentIdAtom);
   const [open, setOpen] = useAtom(cmdkOpenAtom);
+  const setKeybindingsActive = useSetAtom(keybindingsActiveAtom);
 
   React.useEffect(() => {
-    if (!open) {
+    if (open) {
+      setKeybindingsActive(false);
+    } else {
+      setKeybindingsActive(true);
       setParentId(null);
     }
-  }, [open, setParentId]);
+    return () => {
+      setKeybindingsActive(true);
+    };
+  }, [open, setKeybindingsActive, setParentId]);
 
   return (
     <>

@@ -1,13 +1,15 @@
 import { Tool, tool } from "ai";
 import { experimental_createMCPClient as createMCPClient } from "ai";
-import {
-  StdioConfig,
-  Experimental_StdioMCPTransport as StdioMCPTransport,
-} from "ai/mcp-stdio";
 import { readFile } from "fs/promises";
 import { join } from "path";
-
 import { z } from "zod";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+interface McpUrl {
+  id: string;
+  name: string;
+  url: string;
+}
 
 const tools: Record<string, Tool> = {
   dummyTool: tool({
@@ -36,48 +38,60 @@ const tools: Record<string, Tool> = {
 
 export const getTools = async () => {
   try {
-    /**
-     * Not ideal, but we're basically starting/stopping STDIO processes
-     * for every tool call.
-     */
-    // Read mcptools.json if it exists, otherwise initialize an empty object
-    const MCP_TOOLS_FILEPATH = join(process.cwd(), "mcptools.json");
+    // Read mcpurls.json if it exists, otherwise initialize an empty array
+    const MCP_URLS_FILEPATH = join(process.cwd(), "mcpurls.json");
 
-    let mcpToolsJson: { mcpServers: Record<string, StdioConfig> } = {
-      mcpServers: {},
-    };
+    let mcpUrls: McpUrl[] = [];
     try {
-      const fileContent = await readFile(MCP_TOOLS_FILEPATH, "utf8");
-      mcpToolsJson = JSON.parse(fileContent);
+      const fileContent = await readFile(MCP_URLS_FILEPATH, "utf8");
+      const parsed = JSON.parse(fileContent);
+      mcpUrls = parsed.mcpUrls || [];
     } catch {
-      // File does not exist or is invalid, initialize as empty object
-      mcpToolsJson = { mcpServers: {} };
+      // File does not exist or is invalid, initialize as empty array
+      mcpUrls = [];
     }
 
     // Flatten all MCP tools into one big object
     const mcpTools: Record<string, Tool> = {};
     const mcpBreakdown: Record<string, Record<string, Tool>> = {};
 
-    if (!mcpToolsJson.mcpServers) {
-      mcpToolsJson.mcpServers = {};
-    }
     const closeClients = await Promise.all(
-      Object.entries(mcpToolsJson.mcpServers).map(
-        async ([serverName, server]) => {
-          console.log("SERVER", server);
+      mcpUrls.map(async (urlConfig) => {
+        console.log("Connecting to MCP server:", urlConfig.name, urlConfig.url);
+        try {
           const mcpClient = await createMCPClient({
-            transport: new StdioMCPTransport(server),
+            transport: new StreamableHTTPClientTransport(
+              new URL(urlConfig.url)
+            ),
           });
 
           const toolsFromServer = await mcpClient.tools();
+          console.log(
+            `Successfully connected to ${urlConfig.name}, got ${
+              Object.keys(toolsFromServer).length
+            } tools`
+          );
+
           Object.assign(mcpTools, toolsFromServer);
-          mcpBreakdown[serverName] = toolsFromServer;
+          mcpBreakdown[urlConfig.name] = toolsFromServer;
+
           // Return an async function that closes this client
           return async () => {
             await mcpClient.close();
           };
+        } catch (error) {
+          console.error(
+            `Failed to connect to MCP server ${urlConfig.name}:`,
+            error
+          );
+
+          // Add a failed connection entry to the breakdown for UI feedback
+          mcpBreakdown[`${urlConfig.name} (Failed)`] = {};
+
+          // Return a no-op function for failed connections
+          return async () => {};
         }
-      )
+      })
     );
 
     return {
@@ -91,10 +105,11 @@ export const getTools = async () => {
       },
     };
   } catch (error) {
-    console.error("Error initializing MCP client:", error);
-    // Fallback to just the local tools if MCP client fails
+    console.error("Error initializing MCP clients:", error);
+    // Fallback to just the local tools if MCP clients fail
     return {
       tools,
+      breakdown: {},
       closeClients: async () => {},
     };
   }

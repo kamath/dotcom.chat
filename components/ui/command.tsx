@@ -1,17 +1,19 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Command as CommandPrimitive } from "cmdk"
-import { SearchIcon } from "lucide-react"
+import * as React from "react";
+import { Command as CommandPrimitive } from "cmdk";
+import { SearchIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
+import { useSetAtom } from "jotai";
+import { keybindingsActiveAtom } from "@/services/commands/atoms";
 
 function Command({
   className,
@@ -26,7 +28,7 @@ function Command({
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CommandDialog({
@@ -35,8 +37,8 @@ function CommandDialog({
   children,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
-  title?: string
-  description?: string
+  title?: string;
+  description?: string;
 }) {
   return (
     <Dialog {...props}>
@@ -50,13 +52,27 @@ function CommandDialog({
         </Command>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 function CommandInput({
   className,
+  onFocus,
+  onBlur,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
+  const setKeybindingsActive = useSetAtom(keybindingsActiveAtom);
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setKeybindingsActive(false);
+    onFocus?.(e);
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    setKeybindingsActive(true);
+    onBlur?.(e);
+  };
+
   return (
     <div
       data-slot="command-input-wrapper"
@@ -69,10 +85,12 @@ function CommandInput({
           "placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         {...props}
       />
     </div>
-  )
+  );
 }
 
 function CommandList({
@@ -88,7 +106,7 @@ function CommandList({
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CommandEmpty({
@@ -100,7 +118,7 @@ function CommandEmpty({
       className="py-6 text-center text-sm"
       {...props}
     />
-  )
+  );
 }
 
 function CommandGroup({
@@ -116,7 +134,7 @@ function CommandGroup({
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CommandSeparator({
@@ -129,7 +147,7 @@ function CommandSeparator({
       className={cn("bg-border -mx-1 h-px", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CommandItem({
@@ -145,7 +163,7 @@ function CommandItem({
       )}
       {...props}
     />
-  )
+  );
 }
 
 function CommandShortcut({
@@ -161,7 +179,7 @@ function CommandShortcut({
       )}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -174,4 +192,4 @@ export {
   CommandItem,
   CommandShortcut,
   CommandSeparator,
-}
+};

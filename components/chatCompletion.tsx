@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import type { Message } from "@ai-sdk/react";
 
 type MessagePart = {
@@ -375,14 +376,13 @@ export default function ChatCompletion() {
       ) : (
         /* Chat Input Field when not loading */
         <div className="flex gap-2 p-4">
-          <input
-            type="text"
-            className="w-full rounded-lg px-4 py-2 bg-black/30 border border-white/30"
+          <Input
             value={input}
             onChange={(event) => {
               setInput(event.target.value);
             }}
             placeholder="Ask a follow up question..."
+            className="w-full rounded-lg px-4 py-2 bg-black/30 border border-white/30"
             autoFocus={true}
             onKeyDown={async (event) => {
               if (event.key === "Enter") {
