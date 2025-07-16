@@ -140,7 +140,7 @@ export default function ChatPage() {
 
   const { messages, status, input, setInput, setMessages, append, stop } =
     useChat({
-      id: commitHead ?? undefined,
+      id: commitHead ? commitHead : undefined,
       body: {
         pendingMessageConfig,
         mcpUrls,
@@ -202,7 +202,7 @@ export default function ChatPage() {
           metadata: {
             message,
           },
-          parentId: chatRef.current?.commitHead,
+          parentId: chatRef.current?.commitHead ?? undefined,
         };
         setInput("");
         chatRef.current?.addCommit(commit, true);
@@ -360,81 +360,101 @@ export default function ChatPage() {
           </SidebarHeader>
           <SidebarContent className="flex-grow overflow-y-auto">
             <SidebarGroup className="py-2 px-0">
-              {fullCommitList.map((commit) => {
-                // Determine background color based on commit selection and parent relationship
-                let bgColor = "";
-                if (commitHead === commit.id) {
-                  // Current commit head
-                  bgColor = "bg-primary/10 dark:bg-muted py-6";
-                }
-                let author = <span>{commit.author}</span>;
-                if (currentCommitChildrenIndexMap[commit.id] !== undefined) {
-                  author = (
-                    <div className="my-2">
-                      <Keybinding>
-                        {currentCommitChildrenIndexMap[commit.id] + 1}
-                      </Keybinding>{" "}
-                      <span className="ml-2 font-bold">Next user message</span>
-                    </div>
-                  );
-                }
-                if (
-                  commitHead !== null &&
-                  commit.id === commits[commitHead]?.parentId
-                ) {
-                  author = (
-                    <div className="my-2">
-                      <Keybinding>P</Keybinding>{" "}
-                      <span className="ml-2 font-bold">Previous message</span>
-                    </div>
-                  );
-                }
-                return (
-                  <div
-                    key={commit.id}
-                    onClick={() => {
-                      if (isLoading || !keybindingsActive) return;
-                      chatRef.current?.setCommitHead(commit.id);
-                      setMessages(commitThread.map((c) => c.metadata.message));
-                    }}
-                    className={cn(
-                      `px-4 py-3 rounded-md ${bgColor}`,
-                      isLoading || !keybindingsActive
-                        ? "cursor-default opacity-50"
-                        : "cursor-pointer hover:bg-gray-100 dark:hover:bg-muted"
-                    )}
-                  >
-                    <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                      <span className="text-muted-foreground">{author}</span>
-                      <span>
-                        <span
-                          className="font-semibold"
-                          suppressHydrationWarning={true}
-                        >
-                          {formatRelativeTime(commit.date)}
-                        </span>
-                        {" · "}
-                        <Badge variant="outline" className="mx-1">
-                          {commit.id.slice(0, 10)}
-                        </Badge>
-                      </span>
-                      <span
-                        className="text-foreground truncate"
-                        style={{
-                          maxWidth: "100%",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          display: "block",
+              {fullCommitList.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground">
+                  <p className="text-sm">
+                    Send a message to see your chats here!
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {fullCommitList.map((commit) => {
+                    // Determine background color based on commit selection and parent relationship
+                    let bgColor = "";
+                    if (commitHead === commit.id) {
+                      // Current commit head
+                      bgColor = "bg-primary/10 dark:bg-muted py-6";
+                    }
+                    let author = <span>{commit.author}</span>;
+                    if (
+                      currentCommitChildrenIndexMap[commit.id] !== undefined
+                    ) {
+                      author = (
+                        <div className="my-2">
+                          <Keybinding>
+                            {currentCommitChildrenIndexMap[commit.id] + 1}
+                          </Keybinding>{" "}
+                          <span className="ml-2 font-bold">
+                            Next user message
+                          </span>
+                        </div>
+                      );
+                    }
+                    if (
+                      commitHead &&
+                      commit.id === commits[commitHead]?.parentId
+                    ) {
+                      author = (
+                        <div className="my-2">
+                          <Keybinding>P</Keybinding>{" "}
+                          <span className="ml-2 font-bold">
+                            Previous message
+                          </span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        key={commit.id}
+                        onClick={() => {
+                          if (isLoading || !keybindingsActive) return;
+                          chatRef.current?.setCommitHead(commit.id);
+                          setMessages(
+                            commitThread.map((c) => c.metadata.message)
+                          );
                         }}
-                        title={commit.message}
+                        className={cn(
+                          `px-4 py-3 rounded-md ${bgColor}`,
+                          isLoading || !keybindingsActive
+                            ? "cursor-default opacity-50"
+                            : "cursor-pointer hover:bg-gray-100 dark:hover:bg-muted"
+                        )}
                       >
-                        {commit.message}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                        <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                          <span className="text-muted-foreground">
+                            {author}
+                          </span>
+                          <span>
+                            <span
+                              className="font-semibold"
+                              suppressHydrationWarning={true}
+                            >
+                              {formatRelativeTime(commit.date)}
+                            </span>
+                            {" · "}
+                            <Badge variant="outline" className="mx-1">
+                              {commit.id.slice(0, 10)}
+                            </Badge>
+                          </span>
+                          <span
+                            className="text-foreground truncate"
+                            style={{
+                              maxWidth: "100%",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              display: "block",
+                            }}
+                            title={commit.message}
+                          >
+                            {commit.message}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </SidebarGroup>
           </SidebarContent>
         </Sidebar>
@@ -490,8 +510,9 @@ export default function ChatPage() {
                     </div>
                     <ChatMessage commit={commit} />
                     <div className="flex justify-end gap-2">
-                      {lastUserCommit?.id === commit.id && !isLoading && (
-                        <>
+                      {lastUserCommit?.id === commit.id &&
+                        !isLoading &&
+                        keybindingsActive && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -502,6 +523,12 @@ export default function ChatPage() {
                           >
                             <Keybinding>U</Keybinding> Undo
                           </Button>
+                        )}
+                      {keybindingsActive &&
+                        !isLoading &&
+                        messages.length > 0 &&
+                        messages[messages.length - 1]?.role === "user" &&
+                        lastUserCommit?.id === commit.id && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -515,8 +542,7 @@ export default function ChatPage() {
                           >
                             <Keybinding>R</Keybinding> Retry
                           </Button>
-                        </>
-                      )}
+                        )}
                     </div>
                   </div>
                 ))

@@ -169,7 +169,14 @@ export function McpUrlManager() {
       return;
     }
 
-    const urlValidation = validateUrl(newUrl);
+    // Check for duplicate URLs
+    const trimmedUrl = newUrl.trim();
+    if (urls?.some((url) => url.url === trimmedUrl)) {
+      setValidationError("This URL has already been added");
+      return;
+    }
+
+    const urlValidation = validateUrl(trimmedUrl);
     if (!urlValidation.valid) {
       setValidationError(
         urlValidation.message || "Please enter a valid HTTP/HTTPS URL"
@@ -183,28 +190,83 @@ export function McpUrlManager() {
       // Don't return, let user proceed with warning
     }
 
-    const serverName = generateServerName(newUrl.trim());
+    const serverName = generateServerName(trimmedUrl);
 
     const newUrlObj: McpUrl = {
       id: crypto.randomUUID(),
       name: serverName,
-      url: newUrl.trim(),
+      url: trimmedUrl,
     };
 
     const updatedUrls = [...(urls || []), newUrlObj];
     setUrls(updatedUrls);
     setNewUrl("");
     setValidationError("");
+    // Refresh MCP servers to reflect the new URL
+    setReloadTools(true);
   };
 
   const handleDeleteUrl = (id: string) => {
     const updatedUrls = (urls || []).filter((url) => url.id !== id);
     setUrls(updatedUrls);
+    // Refresh MCP servers to reflect the removed URL
+    setReloadTools(true);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && newUrl) {
       handleAddUrl();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    // Get the pasted content
+    const pastedText = e.clipboardData.getData("text");
+
+    // Check if it looks like a URL
+    if (
+      pastedText.trim().startsWith("http://") ||
+      pastedText.trim().startsWith("https://")
+    ) {
+      // Set the URL in the input
+      setNewUrl(pastedText.trim());
+
+      // Clear any existing validation errors
+      setValidationError("");
+
+      // Validate and add the URL automatically after a short delay
+      setTimeout(() => {
+        const trimmedPastedText = pastedText.trim();
+
+        // Check for duplicate URLs
+        if (urls?.some((url) => url.url === trimmedPastedText)) {
+          setValidationError("This URL has already been added");
+          return;
+        }
+
+        const urlValidation = validateUrl(trimmedPastedText);
+        if (urlValidation.valid) {
+          // Auto-add the URL
+          const serverName = generateServerName(trimmedPastedText);
+          const newUrlObj: McpUrl = {
+            id: crypto.randomUUID(),
+            name: serverName,
+            url: trimmedPastedText,
+          };
+
+          const updatedUrls = [...(urls || []), newUrlObj];
+          setUrls(updatedUrls);
+          setNewUrl("");
+          setValidationError("");
+          // Refresh MCP servers to reflect the new URL
+          setReloadTools(true);
+        } else {
+          // Show validation error but keep the URL in the input
+          setValidationError(
+            urlValidation.message || "Please enter a valid HTTP/HTTPS URL"
+          );
+        }
+      }, 100); // Small delay to ensure the input value is set first
     }
   };
 
@@ -243,10 +305,11 @@ export function McpUrlManager() {
             <h4 className="font-medium">Add New MCP Server</h4>
             <div className="space-y-3">
               <Input
-                placeholder="https://your-mcp-server.com/mcp"
+                placeholder="Paste or type MCP URL (auto-adds on paste)"
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
                 onKeyPress={handleKeyPress}
+                onPaste={handlePaste}
                 className="w-full font-mono text-sm"
               />
             </div>

@@ -34,17 +34,7 @@ export function ToolsSidebar() {
   return (
     <div className="w-64 border-l flex flex-col h-full bg-sidebar-background dark:bg-sidebar-background">
       <div className="p-4 border-b flex gap-2 items-center">
-        <h2 className="text-lg font-semibold">Available Tools</h2>
-        <a
-          className="text-sm text-muted-foreground hover:text-foreground cursor-pointer"
-          onClick={async () => {
-            mcpClient.deleteTools();
-            await fetch("/api/tools", { method: "DELETE" });
-            setReloadTools(true);
-          }}
-        >
-          (Reset)
-        </a>
+        <h2 className="text-lg font-semibold">MCP Servers</h2>
       </div>
       <div className="flex-grow overflow-y-auto">
         <Accordion type="single" collapsible className="w-full">
@@ -54,9 +44,13 @@ export function ToolsSidebar() {
             </div>
           ) : error ? (
             <div className="p-4 text-sm text-red-500">{error}</div>
+          ) : !tools ||
+            !tools.breakdown ||
+            Object.keys(tools.breakdown).length === 0 ? (
+            <div className="p-4 text-center text-muted-foreground">
+              <p className="text-sm">Hit M to connect to MCP servers!</p>
+            </div>
           ) : (
-            tools &&
-            tools.breakdown &&
             Object.entries(tools.breakdown).map(([server, tools]) => (
               <AccordionItem key={server} value={server}>
                 <div className="p-4 border-b last:border-b-0 hover:bg-gray-100 dark:hover:bg-gray-700">

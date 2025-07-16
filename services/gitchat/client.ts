@@ -92,8 +92,12 @@ export class GitChat implements GitChatClient {
    */
   public redoLastUserCommit(): string | undefined {
     const lastUserCommit = this.state.get(lastUserCommitAtom);
-    if (!lastUserCommit || !lastUserCommit.parentId) return;
-    this.setCommitHead(lastUserCommit.parentId);
+    if (!lastUserCommit) return;
+
+    // If there's no parentId, go back to ROOT (for the first message case)
+    const targetCommitId = lastUserCommit.parentId ?? ROOT_COMMIT.id;
+    this.setCommitHead(targetCommitId);
+    return targetCommitId;
   }
 }
 

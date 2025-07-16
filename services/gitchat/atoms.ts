@@ -22,9 +22,9 @@ export const ROOT_COMMIT: Commit = {
 export const commitsAtom = atomWithStorage<Record<string, Commit>>("commits", {
   [ROOT_COMMIT.id]: ROOT_COMMIT,
 });
-export const commitHeadAtom = atomWithStorage<string>(
+export const commitHeadAtom = atomWithStorage<string | null>(
   "commitHead",
-  ROOT_COMMIT.id
+  null
 );
 export const loadingCommitThreadAtom = atom(false);
 export const AISDKMessagesAtom = atom<Message[]>([]);
