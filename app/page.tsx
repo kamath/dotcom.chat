@@ -354,7 +354,7 @@ export default function ChatPage() {
 
   return (
     <SidebarProvider>
-      <div className="flex flex-row h-screen w-full">
+      <div className="flex flex-row h-screen-safe w-full">
         {/* Left Sidebar */}
         <Sidebar className="border-r flex flex-col">
           <SidebarHeader className="py-4">

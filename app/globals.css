@@ -43,7 +43,11 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Mobile viewport handling for iPhone Safari URL bar */
 :root {
+  --vh: 1vh;
+  --dvh: 1dvh; /* Dynamic viewport height */
+  --svh: 1svh; /* Small viewport height */
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -118,5 +122,43 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Mobile-safe height utilities */
+@layer utilities {
+  .h-screen-safe {
+    height: 100vh; /* Fallback */
+    height: calc(var(--vh, 1vh) * 100); /* Use custom property if available */
+    height: 100dvh; /* Use dvh if supported */
+  }
+  
+  .min-h-screen-safe {
+    min-height: 100vh; /* Fallback */
+    min-height: calc(var(--vh, 1vh) * 100); /* Use custom property if available */
+    min-height: 100dvh; /* Use dvh if supported */
+  }
+  
+  .max-h-screen-safe {
+    max-height: 100vh; /* Fallback */
+    max-height: calc(var(--vh, 1vh) * 100); /* Use custom property if available */
+    max-height: 100dvh; /* Use dvh if supported */
+  }
+  
+  /* Support for iPhone notch and safe areas */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
   }
 }
