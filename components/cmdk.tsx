@@ -54,7 +54,7 @@ const commandTreeAtom = atomWithStorage<Command[]>("commandTree", [
     id: "set-model",
   },
   {
-    name: "MCP Config",
+    name: "MCP Servers & Tools",
     id: "mcp-config",
     onSelect: () => {
       setMcpConfigOpen(true);

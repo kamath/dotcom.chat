@@ -39,7 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { CmdK } from "@/components/cmdk";
 import gitChat from "@/services/gitchat/client";
 import type { GitChat, Commit } from "@/services/gitchat/client";
-import { ToolsSidebar } from "@/components/tools-sidebar";
+
 import Keybinding from "@/components/keybinding";
 import { cn } from "@/lib/utils";
 import { McpUrlManager } from "@/components/mcp-url-manager";
@@ -48,6 +48,7 @@ import {
   isMcpConfigOpenAtom,
   mcpUrlsAtom,
 } from "@/services/mcp/atoms";
+import mcpClient from "@/services/mcp/client";
 import { GitHubStars } from "@/components/github-stars";
 
 // Function to format date into a pretty relative time
@@ -107,6 +108,15 @@ export default function ChatPage() {
       console.log("Breakdown:", breakdown);
     }
   }, [breakdown]);
+
+  // Initial MCP connection on app load (only if URLs are configured)
+  const hasInitiallyLoaded = useRef(false);
+  useEffect(() => {
+    if (!hasInitiallyLoaded.current && mcpUrls && mcpUrls.length > 0) {
+      mcpClient.getTools();
+      hasInitiallyLoaded.current = true;
+    }
+  }, [mcpUrls]); // Run when mcpUrls changes, but only connect once
 
   const messageFinishCallback = useCallback(
     (assistantMessage: Message) => {
@@ -651,7 +661,7 @@ export default function ChatPage() {
                     onClick={() => setMcpConfigOpen(true)}
                     disabled={!keybindingsActive || isLoading}
                   >
-                    <Keybinding>M</Keybinding> MCP
+                    <Keybinding>M</Keybinding> MCP Tools
                   </Button>
                   {commitThread.length > 0 && (
                     <>
@@ -718,9 +728,6 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
-
-        {/* Tools Sidebar on the right */}
-        <ToolsSidebar />
       </div>
     </SidebarProvider>
   );

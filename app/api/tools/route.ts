@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { getTools } from "@/lib/tools";
+import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
 import {
   ZodTypeAny,
   ZodObject,
@@ -120,11 +121,20 @@ export async function POST(request: Request) {
   try {
     const { mcpUrls } = await request.json();
 
-    const { tools, breakdown, closeClients } = await getTools(mcpUrls || []);
-    await closeClients();
+    // Use the connection manager for incremental updates
+    const {
+      tools: allTools,
+      breakdown,
+      errors,
+    } = await mcpConnectionManager.updateConnections(mcpUrls || []);
+
+    // Include local tools
+    const { tools: localTools } = await getTools([]);
+    const combinedTools = { ...allTools, ...localTools };
+
     const serializedTools: Record<string, SerializedTool> = {};
 
-    for (const [name, toolInstance] of Object.entries(tools)) {
+    for (const [name, toolInstance] of Object.entries(combinedTools)) {
       try {
         serializedTools[name] = {
           description: toolInstance.description,
@@ -139,6 +149,11 @@ export async function POST(request: Request) {
           },
         };
       }
+    }
+
+    // Add failed entries to breakdown for UI feedback
+    for (const [serverName] of Object.entries(errors)) {
+      breakdown[`${serverName} (Failed)`] = {};
     }
 
     return NextResponse.json({
@@ -160,8 +175,7 @@ export async function POST(request: Request) {
  */
 export async function GET() {
   try {
-    const { tools, breakdown, closeClients } = await getTools([]);
-    await closeClients();
+    const { tools } = await getTools([]);
     const serializedTools: Record<string, SerializedTool> = {};
 
     for (const [name, toolInstance] of Object.entries(tools)) {
@@ -183,7 +197,7 @@ export async function GET() {
 
     return NextResponse.json({
       tools: serializedTools,
-      breakdown,
+      breakdown: {},
     });
   } catch (error) {
     console.error("Error serializing tools:", error);

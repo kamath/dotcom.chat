@@ -1,5 +1,6 @@
 import { streamText } from "ai";
 import { getTools } from "@/lib/tools";
+import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
 import { resolveModel } from "../apiUtils";
 
 export async function POST(req: Request) {
@@ -8,7 +9,15 @@ export async function POST(req: Request) {
   console.log("Received pendingMessageConfig:", pendingMessageConfig);
   console.log("Received mcpUrls:", mcpUrls);
 
-  const { tools, breakdown, closeClients } = await getTools(mcpUrls || []);
+  // Get tools from the connection manager (which maintains persistent connections)
+  const { tools: mcpTools, breakdown } =
+    await mcpConnectionManager.updateConnections(mcpUrls || []);
+
+  // Get local tools
+  const { tools: localTools } = await getTools([]);
+
+  // Combine all tools
+  const tools = { ...mcpTools, ...localTools };
 
   console.log("TOOLS", tools);
   console.log("BREAKDOWN", breakdown);
@@ -33,7 +42,7 @@ export async function POST(req: Request) {
       console.debug("FINISHED", message);
       // Log the usage data to verify it's being captured
       console.debug("USAGE DATA:", message.usage);
-      await closeClients();
+      // Note: We no longer need to close clients as connections are persistent
     },
     experimental_telemetry: {
       isEnabled: true,

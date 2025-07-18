@@ -8,6 +8,10 @@ export interface McpUrl {
   url: string;
 }
 
+export interface McpConnectionStatus {
+  [serverName: string]: "connected" | "failed" | "connecting";
+}
+
 export const toolsAtom = atom<Record<string, Record<string, Tool>> | null>(
   null
 );
@@ -18,6 +22,13 @@ export const breakdownAtom = atom<Record<string, Record<string, Tool>> | null>(
   null
 );
 export const isMcpConfigOpenAtom = atom<boolean>(false);
+export const connectionStatusAtom = atom<McpConnectionStatus>({});
 
 // Store MCP URLs in localStorage instead of JSON file
 export const mcpUrlsAtom = atomWithStorage<McpUrl[]>("mcpUrls", []);
+
+// Track active server names for efficient lookups
+export const activeServerNamesAtom = atom<Set<string>>(new Set<string>());
+
+// Track servers currently being connected
+export const connectingServersAtom = atom<Set<string>>(new Set<string>());

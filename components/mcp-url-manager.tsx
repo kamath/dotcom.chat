@@ -9,25 +9,85 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Plus, Trash2, Globe, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Globe, AlertCircle, RefreshCw } from "lucide-react";
+import { Tool } from "ai";
 import {
   errorAtom,
   isMcpConfigOpenAtom,
   mcpUrlsAtom,
-  reloadToolsAtom,
+  toolsAtom,
+  isMcpLoadingAtom,
+  connectionStatusAtom,
   type McpUrl,
 } from "@/services/mcp/atoms";
 import { keybindingsActiveAtom } from "@/services/commands/atoms";
+import mcpClient from "@/services/mcp/client";
+
+function validateUrl(url: string): { valid: boolean; message?: string } {
+  try {
+    const urlObject = new URL(url);
+
+    if (!["http:", "https:"].includes(urlObject.protocol)) {
+      return { valid: false, message: "URL must use HTTP or HTTPS protocol" };
+    }
+
+    // Check for localhost or 127.0.0.1 and warn
+    if (
+      urlObject.hostname === "localhost" ||
+      urlObject.hostname === "127.0.0.1"
+    ) {
+      return {
+        valid: true,
+        message:
+          "⚠️ Warning: Localhost URLs won't work in production deployments",
+      };
+    }
+
+    // Check for local network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    const isLocalIP = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(
+      urlObject.hostname
+    );
+    if (isLocalIP) {
+      return {
+        valid: true,
+        message:
+          "⚠️ Warning: Local network IPs may not be accessible to all users",
+      };
+    }
+
+    return { valid: true };
+  } catch {
+    return { valid: false, message: "Invalid URL format" };
+  }
+}
+
+function getCleanUrlForDisplay(url: string): string {
+  try {
+    const urlObject = new URL(url);
+    return `${urlObject.protocol}//${urlObject.host}${urlObject.pathname}`;
+  } catch {
+    return url;
+  }
+}
 
 export function McpUrlManager() {
   const [urls, setUrls] = useAtom(mcpUrlsAtom);
   const [isOpen, setIsOpen] = useAtom(isMcpConfigOpenAtom);
   const error = useAtomValue(errorAtom);
   const setKeybindingsActive = useSetAtom(keybindingsActiveAtom);
-  const setReloadTools = useSetAtom(reloadToolsAtom);
+
+  const tools = useAtomValue(toolsAtom);
+  const isLoading = useAtomValue(isMcpLoadingAtom);
+  const connectionStatus = useAtomValue(connectionStatusAtom);
 
   const [newUrl, setNewUrl] = useState("");
   const [validationError, setValidationError] = useState("");
@@ -52,8 +112,12 @@ export function McpUrlManager() {
     }
   }, [isOpen]);
 
+  // No automatic connection when dialog opens - just display cached state
+
   // Migrate existing URLs to use new naming convention (run once on mount)
   const hasMigrated = useRef(false);
+  const migrationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (!hasMigrated.current && urls && urls.length > 0) {
       const needsUpdate = urls.some((url) => {
@@ -67,11 +131,24 @@ export function McpUrlManager() {
           name: generateServerName(url.url),
         }));
         setUrls(updatedUrls);
-        // Trigger a tools reload to update the sidebar with new names
-        setReloadTools(true);
+
+        // Debounce the refresh to avoid rapid calls
+        if (migrationTimeoutRef.current) {
+          clearTimeout(migrationTimeoutRef.current);
+        }
+        migrationTimeoutRef.current = setTimeout(() => {
+          mcpClient.getTools();
+        }, 100);
       }
       hasMigrated.current = true;
     }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (migrationTimeoutRef.current) {
+        clearTimeout(migrationTimeoutRef.current);
+      }
+    };
   }, [urls, setUrls]);
 
   const generateServerName = (url: string): string => {
@@ -116,50 +193,7 @@ export function McpUrlManager() {
 
       return fullPath;
     } catch {
-      // If URL parsing fails, just return a truncated version of the input
-      return url.length > 40 ? url.substring(0, 37) + "..." : url;
-    }
-  };
-
-  const getCleanUrlForDisplay = (url: string): string => {
-    try {
-      const urlObject = new URL(url);
-      let path = urlObject.pathname;
-
-      // Truncate anything after "/mcp"
-      const mcpIndex = path.indexOf("/mcp");
-      if (mcpIndex !== -1) {
-        path = path.substring(0, mcpIndex + 4); // Keep "/mcp" but remove everything after
-      }
-
-      // Return clean URL without query parameters
-      return `${urlObject.protocol}//${urlObject.hostname}${path}`;
-    } catch {
-      // If URL parsing fails, just return the original
       return url;
-    }
-  };
-
-  const validateUrl = (url: string): { valid: boolean; message?: string } => {
-    try {
-      const urlObject = new URL(url);
-
-      if (urlObject.protocol !== "http:" && urlObject.protocol !== "https:") {
-        return { valid: false, message: "URL must use HTTP or HTTPS protocol" };
-      }
-
-      // Check if URL looks like it might be an MCP endpoint
-      if (urlObject.search && !urlObject.pathname.includes("/mcp")) {
-        return {
-          valid: true,
-          message:
-            "⚠️ This URL has query parameters but doesn't look like an MCP endpoint. MCP URLs typically end with '/mcp'",
-        };
-      }
-
-      return { valid: true };
-    } catch {
-      return { valid: false, message: "Please enter a valid URL" };
     }
   };
 
@@ -202,15 +236,15 @@ export function McpUrlManager() {
     setUrls(updatedUrls);
     setNewUrl("");
     setValidationError("");
-    // Refresh MCP servers to reflect the new URL
-    setReloadTools(true);
+    // Immediately connect to the new server
+    mcpClient.getTools();
   };
 
   const handleDeleteUrl = (id: string) => {
     const updatedUrls = (urls || []).filter((url) => url.id !== id);
     setUrls(updatedUrls);
-    // Refresh MCP servers to reflect the removed URL
-    setReloadTools(true);
+    // Immediately refresh connections after removing a server
+    mcpClient.getTools();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -258,8 +292,8 @@ export function McpUrlManager() {
           setUrls(updatedUrls);
           setNewUrl("");
           setValidationError("");
-          // Refresh MCP servers to reflect the new URL
-          setReloadTools(true);
+          // Immediately connect to the new server
+          mcpClient.getTools();
         } else {
           // Show validation error but keep the URL in the input
           setValidationError(
@@ -270,19 +304,37 @@ export function McpUrlManager() {
     }
   };
 
+  const handleReconnect = async (serverName: string) => {
+    await mcpClient.reconnectServer(serverName);
+  };
+
+  const getConnectionStatusIcon = (serverName: string) => {
+    const status = connectionStatus[serverName];
+    switch (status) {
+      case "connected":
+        return <div className="w-2 h-2 bg-green-500 rounded-full" />;
+      case "failed":
+        return <div className="w-2 h-2 bg-red-500 rounded-full" />;
+      case "connecting":
+        return (
+          <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+        );
+      default:
+        return <div className="w-2 h-2 bg-gray-400 rounded-full" />;
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5" />
-            MCP Server URLs
+            MCP Servers & Tools
           </DialogTitle>
           <DialogDescription>
-            Add MCP server URLs that support Streamable HTTP transport. URLs
-            should point to valid MCP endpoints (usually ending in{" "}
-            <code>/mcp</code>). Config is stored fully locally.
-            <br />
+            Manage your MCP server URLs and view available tools. URLs should
+            point to valid MCP endpoints.
             <br />
             <span className="text-sm font-bold">
               New to MCP?{" "}
@@ -299,7 +351,7 @@ export function McpUrlManager() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 overflow-y-auto max-h-[60vh]">
           {/* Add new URL section */}
           <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
             <h4 className="font-medium">Add New MCP Server</h4>
@@ -331,33 +383,205 @@ export function McpUrlManager() {
             </Button>
           </div>
 
-          {/* Existing URLs list */}
-          <div className="space-y-2">
-            {urls && urls.length > 0 ? (
-              urls.map((url) => (
-                <div
-                  key={url.id}
-                  className="flex items-center justify-between p-3 border rounded-md"
+          {/* Servers and Tools section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Connected Servers & Tools</h4>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!isLoading) {
+                    await mcpClient.getTools();
+                  }
+                }}
+                disabled={isLoading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                />
+                Refresh All
+              </Button>
+            </div>
+
+            {isLoading ? (
+              urls && urls.length > 0 ? (
+                <Accordion
+                  type="single"
+                  collapsible
+                  className="w-full space-y-8"
                 >
-                  <div className="flex flex-col gap-1">
-                    <p className="font-medium">{url.name}</p>
-                    <p className="text-sm text-muted-foreground font-mono">
-                      {getCleanUrlForDisplay(url.url)}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeleteUrl(url.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {urls.map((url) => {
+                    const serverStatus =
+                      connectionStatus[url.name] || "connecting";
+
+                    return (
+                      <AccordionItem key={url.id} value={url.id}>
+                        <div className="border rounded-md">
+                          <div className="flex items-center justify-between p-3">
+                            <div className="flex items-center gap-3 flex-1">
+                              {getConnectionStatusIcon(url.name)}
+                              <div className="flex flex-col gap-1 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <AccordionTrigger className="hover:no-underline p-0 font-medium">
+                                    {url.name}
+                                  </AccordionTrigger>
+                                  {serverStatus === "connecting" && (
+                                    <span className="text-xs text-yellow-600">
+                                      (Connecting)
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground font-mono">
+                                  {getCleanUrlForDisplay(url.url)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteUrl(url.id)}
+                                title="Remove server"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <AccordionContent className="px-3 pb-3">
+                            <div className="text-sm text-yellow-600 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                              Tools are loading...
+                            </div>
+                          </AccordionContent>
+                        </div>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              ) : (
+                <div className="p-4 text-center text-muted-foreground">
+                  <p className="text-sm">Loading tools...</p>
                 </div>
-              ))
+              )
+            ) : error ? (
+              <div className="p-4 text-sm text-red-500 text-center">
+                {error}
+              </div>
+            ) : !urls || urls.length === 0 ? (
+              <div className="p-4 text-center text-muted-foreground">
+                <p className="text-sm">No MCP servers configured.</p>
+              </div>
             ) : (
-              <p className="text-sm text-center text-muted-foreground py-4">
-                No MCP servers configured.
-              </p>
+              <Accordion type="single" collapsible className="w-full space-y-2">
+                {urls.map((url) => {
+                  const serverTools = tools?.breakdown?.[url.name] || {};
+                  const failedKey = `${url.name} (Failed)`;
+                  const hasFailedEntry = tools?.breakdown?.[failedKey];
+                  const hasTools = Object.keys(serverTools).length > 0;
+                  const serverStatus = connectionStatus[url.name] || "unknown";
+
+                  return (
+                    <AccordionItem key={url.id} value={url.id}>
+                      <div className="border rounded-md">
+                        <div className="flex items-center justify-between p-3">
+                          <div className="flex items-center gap-3 flex-1">
+                            {getConnectionStatusIcon(url.name)}
+                            <div className="flex flex-col gap-1 flex-1">
+                              <div className="flex items-center gap-2">
+                                <AccordionTrigger className="hover:no-underline p-0 font-medium">
+                                  {url.name}
+                                </AccordionTrigger>
+                                {hasFailedEntry && (
+                                  <span className="text-xs text-red-500">
+                                    (Failed)
+                                  </span>
+                                )}
+                                {hasTools && (
+                                  <span className="text-xs text-muted-foreground">
+                                    ({Object.keys(serverTools).length} tools)
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground font-mono">
+                                {getCleanUrlForDisplay(url.url)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {(serverStatus === "failed" || hasFailedEntry) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleReconnect(url.name)}
+                                disabled={serverStatus === "connecting"}
+                                title="Reconnect to server"
+                              >
+                                <RefreshCw
+                                  className={`h-4 w-4 ${
+                                    serverStatus === "connecting"
+                                      ? "animate-spin"
+                                      : ""
+                                  }`}
+                                />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteUrl(url.id)}
+                              title="Remove server"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {(hasTools ||
+                          hasFailedEntry ||
+                          serverStatus === "connecting") && (
+                          <AccordionContent className="px-3 pb-3">
+                            {serverStatus === "connecting" ? (
+                              <div className="text-sm text-yellow-600 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                                Tools are loading...
+                              </div>
+                            ) : hasFailedEntry ? (
+                              <div className="text-sm text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+                                Failed to connect to this server. Check the URL
+                                and try reconnecting.
+                              </div>
+                            ) : hasTools ? (
+                              <div className="space-y-3 pl-4">
+                                {Object.entries(serverTools).map(
+                                  ([toolName, tool]) => (
+                                    <div
+                                      key={`${url.name}-${toolName}`}
+                                      className="border-l-2 border-gray-200 dark:border-gray-700 pl-3"
+                                    >
+                                      <p className="text-sm font-medium">
+                                        {toolName}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {(tool as Tool).description ||
+                                          "No description available"}
+                                      </p>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground p-2">
+                                No tools available from this server.
+                              </div>
+                            )}
+                          </AccordionContent>
+                        )}
+                      </div>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
             )}
           </div>
         </div>
