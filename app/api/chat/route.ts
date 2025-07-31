@@ -1,5 +1,4 @@
 import { streamText } from "ai";
-import { getTools } from "@/lib/tools";
 import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
 import { resolveModel } from "../apiUtils";
 
@@ -10,14 +9,8 @@ export async function POST(req: Request) {
   console.log("Received mcpUrls:", mcpUrls);
 
   // Get tools from the connection manager (which maintains persistent connections)
-  const { tools: mcpTools, breakdown } =
+  const { tools, breakdown } =
     await mcpConnectionManager.updateConnections(mcpUrls || []);
-
-  // Get local tools
-  const { tools: localTools } = await getTools([]);
-
-  // Combine all tools
-  const tools = { ...mcpTools, ...localTools };
 
   console.log("TOOLS", tools);
   console.log("BREAKDOWN", breakdown);

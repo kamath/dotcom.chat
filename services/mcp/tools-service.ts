@@ -1,5 +1,4 @@
-import { Tool, tool } from "ai";
-import { z } from "zod";
+import { Tool } from "ai";
 import { serializeParameters, SerializedTool } from "@/utils/tool-serialization";
 import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
 
@@ -9,40 +8,7 @@ export interface McpUrl {
   url: string;
 }
 
-// Local tools
-const localTools: Record<string, Tool> = {
-  dummyTool: tool({
-    description: "Dummy tool for demo purposes and testing.",
-    parameters: z.object({
-      location: z
-        .string()
-        .describe("The city and state, e.g. San Francisco, CA"),
-    }),
-    execute: async ({ location }) => {
-      // Mock weather data
-      const conditions = ["Sunny", "Cloudy", "Rainy", "Snowy", "Partly Cloudy"];
-      const temperature = Math.floor(Math.random() * 35) + 40; // 40-75°F
-      const humidity = Math.floor(Math.random() * 50) + 30; // 30-80%
-
-      return {
-        location,
-        temperature,
-        condition: conditions[Math.floor(Math.random() * conditions.length)],
-        humidity,
-        timestamp: new Date().toISOString(),
-      };
-    },
-  }),
-};
-
 export class ToolsService {
-  /**
-   * Get local tools
-   */
-  getLocalTools(): Record<string, Tool> {
-    return localTools;
-  }
-
   /**
    * Serialize tools for UI display
    */
@@ -80,11 +46,8 @@ export class ToolsService {
     // Use the connection manager for incremental updates
     const result = await mcpConnectionManager.updateConnections(mcpUrls);
     
-    // Include local tools
-    const combinedTools = { ...result.tools, ...this.getLocalTools() };
-    
     return {
-      tools: combinedTools,
+      tools: result.tools,
       breakdown: result.breakdown,
       errors: result.errors,
     };

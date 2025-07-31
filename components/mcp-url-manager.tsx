@@ -337,16 +337,16 @@ export function McpUrlManager() {
             point to valid MCP endpoints.
             <br />
             <span className="text-sm font-bold">
-              New to MCP?{" "}
+              New to MCP? Try{" "}
               <a
                 href="https://smithery.ai/server/exa"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline text-blue-600"
               >
-                Try Exa from Smithery for free
+                Exa&apos;s Free Official MCP Server
               </a>{" "}
-              to enable web search.
+              on Smithery to enable web search.
             </span>
           </DialogDescription>
         </DialogHeader>
