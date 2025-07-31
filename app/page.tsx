@@ -1,6 +1,6 @@
 "use client";
 
-import type React from "react";
+import React from "react";
 import { Message, useChat } from "@ai-sdk/react";
 import { ChatMessage } from "@/components/message";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ import {
   breakdownAtom,
   isMcpConfigOpenAtom,
   mcpUrlsAtom,
+  toolsAtom,
 } from "@/services/mcp/atoms";
 import mcpClient from "@/services/mcp/client";
 import { GitHubStars } from "@/components/github-stars";
@@ -99,6 +100,7 @@ export default function ChatPage() {
   const setMcpConfigOpen = useSetAtom(isMcpConfigOpenAtom);
   const breakdown = useAtomValue(breakdownAtom);
   const mcpUrls = useAtomValue(mcpUrlsAtom);
+  const toolsData = useAtomValue(toolsAtom);
   const [keybindingsActive, setKeybindingsActive] = useAtom(
     keybindingsActiveAtom
   );
@@ -108,6 +110,21 @@ export default function ChatPage() {
       console.log("Breakdown:", breakdown);
     }
   }, [breakdown]);
+
+  // Extract tools from the breakdown structure
+  const tools = React.useMemo(() => {
+    if (!toolsData?.breakdown) return {};
+
+    // Flatten all tools from all servers into a single object
+    const allTools: Record<string, any> = {};
+    Object.values(toolsData.breakdown).forEach((serverTools) => {
+      Object.entries(serverTools).forEach(([name, tool]) => {
+        allTools[name] = tool;
+      });
+    });
+    console.log("Extracted tools from toolsData:", allTools);
+    return allTools;
+  }, [toolsData]);
 
   // Initial MCP connection on app load (only if URLs are configured)
   const hasInitiallyLoaded = useRef(false);
@@ -154,6 +171,7 @@ export default function ChatPage() {
       body: {
         pendingMessageConfig,
         mcpUrls,
+        tools,
       },
       onToolCall: (arg) => {
         console.debug("TOOL CALL", arg);
