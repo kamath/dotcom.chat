@@ -20,3 +20,17 @@ export const dialogOpenAtom = atom(false);
 
 // Global state for keybindings - when true, keybindings are active
 export const keybindingsActiveAtom = atom(true);
+
+// Session ID atom - generates a new session ID if none exists
+export const sessionIdAtom = atom(() => {
+  if (typeof window !== 'undefined') {
+    const storedSessionId = sessionStorage.getItem('sessionId');
+    if (storedSessionId) {
+      return storedSessionId;
+    }
+    const newSessionId = crypto.randomUUID();
+    sessionStorage.setItem('sessionId', newSessionId);
+    return newSessionId;
+  }
+  return crypto.randomUUID();
+});

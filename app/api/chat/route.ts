@@ -3,14 +3,17 @@ import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
 import { resolveModel } from "../apiUtils";
 
 export async function POST(req: Request) {
-  const { messages, pendingMessageConfig, mcpUrls } = await req.json();
+  const { messages, pendingMessageConfig, mcpUrls, sessionId: providedSessionId } = await req.json();
 
   console.log("Received pendingMessageConfig:", pendingMessageConfig);
   console.log("Received mcpUrls:", mcpUrls);
+  console.log("Received sessionId:", providedSessionId);
 
-  // Get tools from the connection manager (which maintains persistent connections)
+  // Use provided sessionId or generate a new one
+  const sessionId = providedSessionId || crypto.randomUUID();
+  
   const { tools, breakdown } =
-    await mcpConnectionManager.updateConnections(mcpUrls || []);
+    await mcpConnectionManager.updateConnections(sessionId, mcpUrls || []);
 
   console.log("TOOLS", tools);
   console.log("BREAKDOWN", breakdown);

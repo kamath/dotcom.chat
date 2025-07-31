@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import type { Message } from "@ai-sdk/react";
 import { useAtomValue } from "jotai";
 import { mcpUrlsAtom } from "@/services/mcp/atoms";
+import { sessionIdAtom } from "@/services/commands/atoms";
 
 type MessagePart = {
   type: string;
@@ -34,11 +35,13 @@ type MessagePart = {
 
 export default function ChatCompletion() {
   const mcpUrls = useAtomValue(mcpUrlsAtom);
+  const sessionId = useAtomValue(sessionIdAtom);
 
   const { messages, append, setInput, input, status, stop } = useChat({
     api: "/api/chat",
     body: {
       mcpUrls: mcpUrls,
+      sessionId: sessionId,
     },
     onToolCall: (arg) => {
       console.debug("TOOL CALL", arg, messages);

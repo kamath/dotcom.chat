@@ -412,7 +412,7 @@ export function McpUrlManager() {
                   collapsible
                   className="w-full space-y-8"
                 >
-                  {urls.map((url) => {
+                  {(urls || []).map((url) => {
                     const serverStatus =
                       connectionStatus[url.name] || "connecting";
 
@@ -475,11 +475,16 @@ export function McpUrlManager() {
               </div>
             ) : (
               <Accordion type="single" collapsible className="w-full space-y-2">
-                {urls.map((url) => {
-                  const serverTools = tools?.breakdown?.[url.name] || {};
+                {(urls || []).map((url) => {
+                  const serverTools = tools?.breakdown?.[url.name];
                   const failedKey = `${url.name} (Failed)`;
-                  const hasFailedEntry = tools?.breakdown?.[failedKey];
-                  const hasTools = Object.keys(serverTools).length > 0;
+                  const hasFailedEntry =
+                    tools?.breakdown?.[failedKey] !== undefined;
+                  const hasTools =
+                    serverTools &&
+                    typeof serverTools === "object" &&
+                    serverTools !== null &&
+                    Object.keys(serverTools).length > 0;
                   const serverStatus = connectionStatus[url.name] || "unknown";
 
                   return (
@@ -551,7 +556,10 @@ export function McpUrlManager() {
                                 Failed to connect to this server. Check the URL
                                 and try reconnecting.
                               </div>
-                            ) : hasTools ? (
+                            ) : hasTools &&
+                              serverTools &&
+                              typeof serverTools === "object" &&
+                              serverTools !== null ? (
                               <div className="space-y-3 pl-4">
                                 {Object.entries(serverTools).map(
                                   ([toolName, tool]) => (

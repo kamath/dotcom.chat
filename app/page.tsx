@@ -33,6 +33,7 @@ import {
   dialogOpenAtom,
   pendingMessageConfigAtom,
   keybindingsActiveAtom,
+  sessionIdAtom,
 } from "@/services/commands/atoms";
 import { Export } from "@/components/export";
 import { Badge } from "@/components/ui/badge";
@@ -102,6 +103,7 @@ export default function ChatPage() {
   const [keybindingsActive, setKeybindingsActive] = useAtom(
     keybindingsActiveAtom
   );
+  const sessionId = useAtomValue(sessionIdAtom);
 
   useEffect(() => {
     if (breakdown) {
@@ -154,6 +156,7 @@ export default function ChatPage() {
       body: {
         pendingMessageConfig,
         mcpUrls,
+        sessionId,
       },
       onToolCall: (arg) => {
         console.debug("TOOL CALL", arg);
@@ -477,7 +480,7 @@ export default function ChatPage() {
           </header>
 
           <ScrollArea className="flex-1 p-4 space-y-4" ref={scrollAreaRef}>
-            <div className="max-w-xs lg:max-w-3xl mx-auto space-y-4 pb-20">
+            <div className="max-w-3xl mx-auto space-y-4 pb-20">
               {commitThread.length === 0 &&
               !isLoading &&
               currentCommitChildren.length === 0 ? (
