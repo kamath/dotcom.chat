@@ -13,6 +13,7 @@ import {
   type McpConnectionStatus,
   type McpUrl,
 } from "./atoms";
+import { toolsService } from "./tools-service";
 
 class MCPClient {
   private getToolsPromise: Promise<void> | null = null;
@@ -21,7 +22,7 @@ class MCPClient {
     const store = getDefaultStore();
     return store;
   }
-  private setTools(tools: Record<string, Record<string, Tool>>) {
+  private setTools(tools: { breakdown: Record<string, Record<string, Tool>> }) {
     this.state.set(toolsAtom, tools);
   }
   private setIsLoading(isLoading: boolean) {
@@ -95,31 +96,24 @@ class MCPClient {
       this.setConnectionStatus(updatedStatus);
       this.setConnectingServers(targetServerSet);
 
-      const response = await fetch("/api/tools", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ mcpUrls: this.mcpUrls }),
-      });
+      // Use the tools service directly instead of API call
+      const { tools, breakdown } = await toolsService.getToolsWithBreakdown(
+        this.mcpUrls || []
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch tools");
-      }
-
-      const data = await response.json();
-      this.setTools({ breakdown: data.breakdown });
-      this.setBreakdown(data.breakdown);
+      // The toolsAtom expects the breakdown structure
+      this.setTools({ breakdown });
+      this.setBreakdown(breakdown);
 
       // Update connection status based on results
       const finalStatus: McpConnectionStatus = { ...currentStatus };
       const activeServers = new Set<string>();
 
       this.mcpUrls?.forEach((url) => {
-        if (data.breakdown[url.name]) {
+        if (breakdown[url.name]) {
           finalStatus[url.name] = "connected";
           activeServers.add(url.name);
-        } else if (data.breakdown[`${url.name} (Failed)`]) {
+        } else if (breakdown[`${url.name} (Failed)`]) {
           finalStatus[url.name] = "failed";
         } else {
           // Server was removed or not included
@@ -154,7 +148,7 @@ class MCPClient {
   }
 
   public async deleteTools(): Promise<void> {
-    this.setTools({});
+    this.setTools({ breakdown: {} });
   }
 
   public async handleSave() {

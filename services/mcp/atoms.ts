@@ -12,7 +12,7 @@ export interface McpConnectionStatus {
   [serverName: string]: "connected" | "failed" | "connecting";
 }
 
-export const toolsAtom = atom<Record<string, Record<string, Tool>> | null>(
+export const toolsAtom = atom<{ breakdown: Record<string, Record<string, Tool>> } | null>(
   null
 );
 export const isMcpLoadingAtom = atom<boolean>(true);
