@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { MemoizedMarkdown } from "./memoized-markdown";
 import { cn } from "@/lib/utils";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Square, FileJson, FileText, Copy, Download } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,44 +20,62 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import type { Message } from "@ai-sdk/react";
 import { useAtomValue } from "jotai";
-import { mcpUrlsAtom } from "@/services/mcp/atoms";
-
-type MessagePart = {
-  type: string;
-  text?: string;
-  toolInvocation?: {
-    toolName: string;
-    state: string;
-    args?: Record<string, unknown>;
-  };
-};
+import { toolsAtom } from "@/services/mcp/atoms";
+import { pendingMessageConfigAtom } from "@/services/commands/atoms";
+import type { Tool } from "ai";
 
 export default function ChatCompletion() {
-  const mcpUrls = useAtomValue(mcpUrlsAtom);
+  const toolsData = useAtomValue(toolsAtom);
+  const pendingMessageConfig = useAtomValue(pendingMessageConfigAtom);
+
+  console.log("toolsData from atom:", toolsData);
+
+  // Extract tools from the breakdown structure
+  const tools = React.useMemo(() => {
+    if (!toolsData?.breakdown) return {};
+
+    // Flatten all tools from all servers into a single object
+    const allTools: Record<string, Tool> = {};
+    Object.values(toolsData.breakdown).forEach((serverTools) => {
+      Object.entries(serverTools).forEach(([name, tool]) => {
+        allTools[name] = tool;
+      });
+    });
+    console.log("Extracted tools from toolsData:", allTools);
+    return allTools;
+  }, [toolsData]);
+
+  console.log("Tools being passed to useChat:", tools);
+  console.log("Tools keys:", Object.keys(tools));
 
   const { messages, append, setInput, input, status, stop } = useChat({
     api: "/api/chat",
     body: {
-      mcpUrls: mcpUrls,
+      pendingMessageConfig,
+      tools: tools,
     },
     onToolCall: (arg) => {
-      console.debug("TOOL CALL", arg, messages);
+      console.debug("TOOL CALL", arg);
+      console.debug("Current messages:", messages);
+      console.debug("Tool call details:", JSON.stringify(arg, null, 2));
     },
     onFinish: (arg) => {
-      console.debug("FINISH", arg, messages);
+      console.debug("FINISH", arg);
+      console.debug("Final messages:", messages);
       setLoading(false);
     },
     onResponse: (arg) => {
-      console.debug("RESPONSE", arg, messages);
+      console.debug("RESPONSE", arg);
+      console.debug("Response messages:", messages);
     },
     onError: (arg) => {
-      console.debug("ERROR", arg, messages);
+      console.debug("ERROR", arg);
+      console.debug("Error messages:", messages);
       setLoading(false);
     },
   });
   const hasAppended = useRef(false);
   const [loading, setLoading] = useState(true);
-  const [messageParts, setMessageParts] = useState<MessagePart[]>([]);
   const [stoppable, setStoppable] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -66,6 +84,10 @@ export default function ChatCompletion() {
   const [transcriptFormat, setTranscriptFormat] = useState<"json" | "markdown">(
     "json"
   );
+
+  useEffect(() => {
+    console.log("Messages updated:", messages);
+  }, [messages]);
 
   const formatToJson = (msgs: Message[]): string => {
     return JSON.stringify(msgs, null, 2);
@@ -114,7 +136,7 @@ export default function ChatCompletion() {
       messages[messages.length - 1]?.parts?.filter(
         (p) =>
           p.type === "tool-invocation" && p.toolInvocation.state !== "result"
-      ).length === 0
+      )?.length === 0
     );
   }, [status, messages]);
 
@@ -126,14 +148,6 @@ export default function ChatCompletion() {
   }, [append]);
 
   useEffect(() => {
-    // Update messageParts when messages change
-    const parts = messages.flatMap((message) =>
-      message.parts ? message.parts : []
-    );
-    setMessageParts(parts);
-  }, [messages]);
-
-  useEffect(() => {
     // Scroll to bottom when messageParts changes
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector(
@@ -143,7 +157,7 @@ export default function ChatCompletion() {
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [messageParts]);
+  }, [messages]);
 
   const downloadTranscript = () => {
     const mimeType =
@@ -171,6 +185,7 @@ export default function ChatCompletion() {
           <div ref={chatContainerRef} className="h-full pb-4">
             <div className="flex flex-col gap-4 pt-4">
               {messages?.map((message, index) => {
+                console.log("Message:", index, message);
                 if (message.role === "user") {
                   return (
                     <div className="px-4" key={message.id}>
@@ -187,76 +202,101 @@ export default function ChatCompletion() {
                     key={`${message.id}-${index}`}
                     className="flex flex-col gap-4 px-4"
                   >
-                    {message.parts.map((part, partIndex) => {
-                      if (part.type === "tool-invocation") {
-                        const hasIframe = part.toolInvocation.args?.hasIframe;
-                        return (
-                          <div
-                            key={`part-${message.id}-${partIndex}`}
-                            className="w-full space-x-2 px-4 py-4 rounded-lg bg-black/80 border border-white/30 overflow-x-auto"
-                          >
-                            <span
-                              className={cn(
-                                "font-bold",
-                                part.toolInvocation.state !== "result" &&
-                                  "gradient-background-loading"
-                              )}
-                            >
-                              {part.toolInvocation.toolName.split("_").pop()}{" "}
-                              {hasIframe ? " (computer use agent)" : ""}
-                            </span>
-                            <div className="text-xs">
-                              {part.toolInvocation.args &&
-                                Object.entries(part.toolInvocation.args).map(
-                                  ([key, value]) => {
-                                    return (
-                                      <span key={key}>{value as string}</span>
-                                    );
-                                  }
-                                )}
-                            </div>
-                            <div className="text-xs">
-                              {part.toolInvocation.state === "result" &&
-                                part.toolInvocation.result && (
-                                  <div className="flex flex-col gap-2 mt-2">
-                                    {part.toolInvocation.toolName ===
-                                      "screenshot" ||
-                                    part.toolInvocation.toolName ===
-                                      "stagehand_act" ? (
-                                      <div className="mt-2">
-                                        <Image
-                                          src={`data:image/png;base64,${part.toolInvocation.result}`}
-                                          alt="Screenshot"
-                                          width={300}
-                                          height={300}
-                                          className="max-w-full rounded-lg border border-white/20"
-                                        />
+                    {message.parts
+                      ? message.parts.map((part, partIndex) => {
+                          if (part.type === "tool-invocation") {
+                            const hasIframe =
+                              part.toolInvocation.args?.hasIframe;
+                            return (
+                              <div
+                                key={`tool-${message.id}-${partIndex}-${part.toolInvocation.toolName}`}
+                                className="w-full space-x-2 px-4 py-4 rounded-lg bg-black/80 border border-white/30 overflow-x-auto"
+                              >
+                                <span
+                                  className={cn(
+                                    "font-bold",
+                                    part.toolInvocation.state !== "result" &&
+                                      "gradient-background-loading"
+                                  )}
+                                >
+                                  {part.toolInvocation.toolName
+                                    .split("_")
+                                    .pop()}{" "}
+                                  {hasIframe ? " (computer use agent)" : ""}
+                                </span>
+                                <div className="text-xs">
+                                  {part.toolInvocation.args &&
+                                    Object.entries(
+                                      part.toolInvocation.args
+                                    ).map(([key, value]) => {
+                                      return (
+                                        <span key={key}>{value as string}</span>
+                                      );
+                                    })}
+                                </div>
+                                <div className="text-xs">
+                                  {part.toolInvocation.state === "result" ? (
+                                    part.toolInvocation.result ? (
+                                      <div className="flex flex-col gap-2 mt-2">
+                                        {part.toolInvocation.toolName ===
+                                          "screenshot" ||
+                                        part.toolInvocation.toolName ===
+                                          "stagehand_act" ? (
+                                          <div className="mt-2">
+                                            <Image
+                                              src={`data:image/png;base64,${part.toolInvocation.result}`}
+                                              alt="Screenshot"
+                                              width={300}
+                                              height={300}
+                                              className="max-w-full rounded-lg border border-white/20"
+                                            />
+                                          </div>
+                                        ) : (
+                                          <MemoizedMarkdown
+                                            id={message.id}
+                                            content={part.toolInvocation.result.toString()}
+                                          />
+                                        )}
                                       </div>
                                     ) : (
-                                      <MemoizedMarkdown
-                                        id={message.id}
-                                        content={part.toolInvocation.result.toString()}
-                                      />
-                                    )}
-                                  </div>
-                                )}
-                            </div>
-                          </div>
-                        );
-                      } else if (part.type === "text") {
-                        return (
+                                      <div className="text-muted-foreground mt-2">
+                                        No result available
+                                      </div>
+                                    )
+                                  ) : (
+                                    <div className="text-muted-foreground mt-2">
+                                      {part.toolInvocation.state}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          } else if (part.type === "text") {
+                            return (
+                              <div
+                                className="prose prose-invert max-w-none space-y-2 px-4 overflow-x-auto"
+                                key={`${message.id}-${partIndex}`}
+                              >
+                                <MemoizedMarkdown
+                                  id={message.id}
+                                  content={part.text.toString()}
+                                />
+                              </div>
+                            );
+                          }
+                        })
+                      : // Fallback for assistant messages without parts (during streaming)
+                        message.content && (
                           <div
                             className="prose prose-invert max-w-none space-y-2 px-4 overflow-x-auto"
-                            key={`${message.id}-${partIndex}`}
+                            key={`${message.id}-content`}
                           >
                             <MemoizedMarkdown
                               id={message.id}
-                              content={part.text.toString()}
+                              content={message.content.toString()}
                             />
                           </div>
-                        );
-                      }
-                    })}
+                        )}
                     {message.annotations?.map((annotation, annotationIndex) => {
                       if (
                         typeof annotation === "object" &&

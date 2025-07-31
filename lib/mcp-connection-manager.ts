@@ -1,6 +1,10 @@
-import { Tool } from "ai";
-import { experimental_createMCPClient as createMCPClient } from "ai";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
+	ListToolsRequest,
+	ListToolsResultSchema,
+	Tool,
+  } from "@modelcontextprotocol/sdk/types.js";
 
 export interface McpUrl {
   id: string;
@@ -9,9 +13,9 @@ export interface McpUrl {
 }
 
 interface ManagedConnection {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any; // The MCPClient type is not exported from 'ai' package
-  tools: Record<string, Tool>;
+  client: Client;
+  sessionId: string;
+  tools: Awaited<ReturnType<Client['listTools']>>;
   url: McpUrl;
 }
 
@@ -26,7 +30,12 @@ class MCPConnectionManager {
   getAllTools(): Record<string, Tool> {
     const allTools: Record<string, Tool> = {};
     for (const connection of this.connections.values()) {
-      Object.assign(allTools, connection.tools);
+      // Convert the tools array to a Record keyed by tool name
+      if (connection.tools.tools) {
+        for (const tool of connection.tools.tools) {
+          allTools[tool.name] = tool;
+        }
+      }
     }
     return allTools;
   }
@@ -37,7 +46,13 @@ class MCPConnectionManager {
   getBreakdown(): Record<string, Record<string, Tool>> {
     const breakdown: Record<string, Record<string, Tool>> = {};
     for (const [serverName, connection] of this.connections.entries()) {
-      breakdown[serverName] = connection.tools;
+      const serverTools: Record<string, Tool> = {};
+      if (connection.tools.tools) {
+        for (const tool of connection.tools.tools) {
+          serverTools[tool.name] = tool;
+        }
+      }
+      breakdown[serverName] = serverTools;
     }
     return breakdown;
   }
@@ -53,7 +68,13 @@ class MCPConnectionManager {
     if (existingPromise) {
       const result = await existingPromise;
       if (result) {
-        return { tools: result.tools };
+        const toolsRecord: Record<string, Tool> = {};
+        if (result.tools.tools) {
+          for (const tool of result.tools.tools) {
+            toolsRecord[tool.name] = tool;
+          }
+        }
+        return { tools: toolsRecord };
       } else {
         return { tools: {}, error: "Failed to connect" };
       }
@@ -62,7 +83,13 @@ class MCPConnectionManager {
     // Check if already connected
     const existingConnection = this.connections.get(urlConfig.name);
     if (existingConnection) {
-      return { tools: existingConnection.tools };
+      const toolsRecord: Record<string, Tool> = {};
+      if (existingConnection.tools.tools) {
+        for (const tool of existingConnection.tools.tools) {
+          toolsRecord[tool.name] = tool;
+        }
+      }
+      return { tools: toolsRecord };
     }
 
     // Create connection promise
@@ -73,7 +100,13 @@ class MCPConnectionManager {
       const connection = await connectionPromise;
       if (connection) {
         this.connections.set(urlConfig.name, connection);
-        return { tools: connection.tools };
+        const toolsRecord: Record<string, Tool> = {};
+        if (connection.tools.tools) {
+          for (const tool of connection.tools.tools) {
+            toolsRecord[tool.name] = tool;
+          }
+        }
+        return { tools: toolsRecord };
       } else {
         return { tools: {}, error: "Failed to connect" };
       }
@@ -167,12 +200,35 @@ class MCPConnectionManager {
   ): Promise<ManagedConnection | null> {
     try {
       console.log("Connecting to MCP server:", urlConfig.name, urlConfig.url);
+	  const client = new Client({
+		name: "dotcom.chat",
+		version: "1.0.0",
+		title: "dotcom.chat",
+	  })
+	  
+	  // Try without providing a sessionId - let the server generate one
+	  const transport = new StreamableHTTPClientTransport(new URL(urlConfig.url));
+	  console.log("Created transport with URL:", urlConfig.url);
+	  
+	  // Connect the client before making any requests
+	  console.log("Attempting to connect client...");
+	  await client.connect(transport);
+	  console.log("Client connected successfully");
+	  console.log("Transport session ID after connect:", transport.sessionId);
 
-      const client = await createMCPClient({
-        transport: new StreamableHTTPClientTransport(new URL(urlConfig.url)),
-      });
-
-      const tools = await client.tools();
+      const toolsRequest: ListToolsRequest = {
+		method: 'tools/list',
+		params: {}
+	  }
+	  
+	  let tools;
+	  try {
+	    tools = await client.request(toolsRequest, ListToolsResultSchema);
+	  } catch (error) {
+	    console.error("Error requesting tools list:", error);
+	    console.error("Transport session ID:", transport.sessionId);
+	    throw error;
+	  }
       console.log(
         `Successfully connected to ${urlConfig.name}, got ${
           Object.keys(tools).length
@@ -181,7 +237,8 @@ class MCPConnectionManager {
 
       return {
         client,
-        tools,
+		sessionId: transport.sessionId || crypto.randomUUID(),
+        tools: tools,
         url: urlConfig,
       };
     } catch (error) {

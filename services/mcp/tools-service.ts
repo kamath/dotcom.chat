@@ -1,6 +1,5 @@
-import { Tool } from "ai";
-import { serializeParameters, SerializedTool } from "@/utils/tool-serialization";
 import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
+import { Tool } from "@modelcontextprotocol/sdk/types.js";
 
 export interface McpUrl {
   id: string;
@@ -12,27 +11,8 @@ export class ToolsService {
   /**
    * Serialize tools for UI display
    */
-  serializeTools(tools: Record<string, Tool>): Record<string, SerializedTool> {
-    const serializedTools: Record<string, SerializedTool> = {};
-
-    for (const [name, toolInstance] of Object.entries(tools)) {
-      try {
-        serializedTools[name] = {
-          description: toolInstance.description,
-          parameters: serializeParameters(toolInstance.parameters),
-        };
-      } catch (error) {
-        console.error(`Error serializing tool ${name}:`, error);
-        serializedTools[name] = {
-          description: toolInstance.description,
-          parameters: {
-            error: `Failed to serialize parameters for tool ${name}`,
-          },
-        };
-      }
-    }
-
-    return serializedTools;
+  serializeTools(tools: Record<string, Tool>): Record<string, Tool> {
+    return tools;
   }
 
   /**

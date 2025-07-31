@@ -1,23 +1,32 @@
 import { streamText } from "ai";
-import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
 import { resolveModel } from "../apiUtils";
+import { createMcpTools } from "../mcp-tool-handler";
+import { getServerMcpManager } from "@/lib/server-mcp-manager";
 
 export async function POST(req: Request) {
-  const { messages, pendingMessageConfig, mcpUrls } = await req.json();
+  const body = await req.json();
+  console.log("Full request body:", body);
+  console.log("Body keys:", Object.keys(body));
+  
+  const { messages, pendingMessageConfig, tools, mcpUrls } = body;
 
   console.log("Received pendingMessageConfig:", pendingMessageConfig);
-  console.log("Received mcpUrls:", mcpUrls);
+  console.log("Received tools:", tools);
+  console.log("Tools type:", typeof tools);
+  console.log("Tools keys:", tools ? Object.keys(tools) : "tools is null/undefined");
 
-  // Get tools from the connection manager (which maintains persistent connections)
-  const { tools, breakdown } =
-    await mcpConnectionManager.updateConnections(mcpUrls || []);
-
-  console.log("TOOLS", tools);
-  console.log("BREAKDOWN", breakdown);
-
+  // Create a unique request ID for this chat session
+  const requestId = crypto.randomUUID();
+  
+  // Initialize MCP manager with the URLs
+  const mcpManager = await getServerMcpManager(requestId, mcpUrls || []);
+  
+  // Convert MCP tool descriptions to AI SDK tools
+  const aiTools = createMcpTools(tools, mcpManager);
+  
   const result = streamText({
     model: resolveModel(pendingMessageConfig.modelName),
-    tools,
+    tools: aiTools,
     toolCallStreaming: true,
     system:
       "You are a helpful assistant that can browse the web. You are given a prompt and you may need to browse the web to find the answer. You may not need to browse the web at all; you may already know the answer.",
@@ -32,9 +41,9 @@ export async function POST(req: Request) {
       throw error;
     },
     onFinish: async (message) => {
-      console.debug("FINISHED", message);
+    //   console.debug("FINISHED", message);
       // Log the usage data to verify it's being captured
-      console.debug("USAGE DATA:", message.usage);
+    //   console.debug("USAGE DATA:", message.usage);
       // Note: We no longer need to close clients as connections are persistent
     },
     experimental_telemetry: {
