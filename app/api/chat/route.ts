@@ -1,5 +1,6 @@
 import { streamText } from "ai";
-import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
+import { getToolsForUrls } from "@/lib/mcp-connection-core";
+import type { McpUrl } from "@/types/mcp";
 import { resolveModel } from "../apiUtils";
 
 export async function POST(req: Request) {
@@ -8,12 +9,10 @@ export async function POST(req: Request) {
   console.log("Received pendingMessageConfig:", pendingMessageConfig);
   console.log("Received mcpUrls:", mcpUrls);
 
-  // Get tools from the connection manager (which maintains persistent connections)
-  const { tools, breakdown } =
-    await mcpConnectionManager.updateConnections(mcpUrls || []);
+  // Server-owned ephemeral utilities per request (stateless between requests)
+  const tools = await getToolsForUrls((mcpUrls || []) as McpUrl[]);
 
   console.log("TOOLS", tools);
-  console.log("BREAKDOWN", breakdown);
 
   const result = streamText({
     model: resolveModel(pendingMessageConfig.modelName),

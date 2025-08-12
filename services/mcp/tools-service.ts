@@ -1,12 +1,9 @@
 import { Tool } from "ai";
-import { serializeParameters, SerializedTool } from "@/utils/tool-serialization";
-import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
-
-export interface McpUrl {
-  id: string;
-  name: string;
-  url: string;
-}
+import {
+  serializeParameters,
+  SerializedTool,
+} from "@/utils/tool-serialization";
+import type { McpUrl } from "@/types/mcp";
 
 export class ToolsService {
   /**
@@ -35,45 +32,8 @@ export class ToolsService {
     return serializedTools;
   }
 
-  /**
-   * Load tools from MCP servers
-   */
-  async loadMcpTools(mcpUrls: McpUrl[]): Promise<{
-    tools: Record<string, Tool>;
-    breakdown: Record<string, Record<string, Tool>>;
-    errors: Record<string, string>;
-  }> {
-    // Use the connection manager for incremental updates
-    const result = await mcpConnectionManager.updateConnections(mcpUrls);
-    
-    return {
-      tools: result.tools,
-      breakdown: result.breakdown,
-      errors: result.errors,
-    };
-  }
-
-  /**
-   * Get tools with breakdown (not serialized)
-   */
-  async getToolsWithBreakdown(mcpUrls: McpUrl[] = []): Promise<{
-    tools: Record<string, Tool>;
-    breakdown: Record<string, Record<string, Tool>>;
-    errors: Record<string, string>;
-  }> {
-    const { tools, breakdown, errors } = await this.loadMcpTools(mcpUrls);
-
-    // Add failed entries to breakdown for UI feedback
-    for (const [serverName] of Object.entries(errors)) {
-      breakdown[`${serverName} (Failed)`] = {};
-    }
-
-    return {
-      tools,
-      breakdown,
-      errors,
-    };
-  }
+  // This layer should only do UI-focused transformations.
+  // Orchestration is moved to the client and connection manager.
 }
 
 // Export singleton instance
