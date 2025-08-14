@@ -230,6 +230,7 @@ export function McpUrlManager() {
       id: crypto.randomUUID(),
       name: serverName,
       url: trimmedUrl,
+      callbackUrl: process.env.CALLBACK_URL,
     };
 
     const updatedUrls = [...(urls || []), newUrlObj];
@@ -286,6 +287,7 @@ export function McpUrlManager() {
             id: crypto.randomUUID(),
             name: serverName,
             url: trimmedPastedText,
+            callbackUrl: process.env.CALLBACK_URL,
           };
 
           const updatedUrls = [...(urls || []), newUrlObj];
