@@ -11,9 +11,9 @@ import {
   activeServerNamesAtom,
   connectingServersAtom,
   type McpConnectionStatus,
-  type McpUrl,
 } from "./atoms";
-import { toolsService } from "./tools-service";
+import type { McpUrl } from "@/types/mcp";
+import { mcpConnectionManager } from "@/lib/mcp-connection-manager";
 
 class MCPClient {
   private getToolsPromise: Promise<void> | null = null;
@@ -49,10 +49,6 @@ class MCPClient {
 
   private get mcpUrls() {
     return this.state.get(mcpUrlsAtom);
-  }
-
-  private get activeServers() {
-    return this.state.get(activeServerNamesAtom);
   }
 
   public async getTools(specificServers?: string[]): Promise<void> {
@@ -96,10 +92,14 @@ class MCPClient {
       this.setConnectionStatus(updatedStatus);
       this.setConnectingServers(targetServerSet);
 
-      // Use the tools service directly instead of API call
-      const { tools, breakdown } = await toolsService.getToolsWithBreakdown(
-        this.mcpUrls || []
-      );
+      // Ask connection manager to update connections and provide tools
+      const { breakdown, errors } =
+        await mcpConnectionManager.updateConnections(this.mcpUrls || []);
+
+      // Add failed entries to breakdown for UI feedback
+      for (const [serverName] of Object.entries(errors)) {
+        breakdown[`${serverName} (Failed)`] = {};
+      }
 
       // The toolsAtom expects the breakdown structure
       this.setTools({ breakdown });

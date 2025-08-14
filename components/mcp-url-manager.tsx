@@ -27,10 +27,10 @@ import {
   toolsAtom,
   isMcpLoadingAtom,
   connectionStatusAtom,
-  type McpUrl,
 } from "@/services/mcp/atoms";
 import { keybindingsActiveAtom } from "@/services/commands/atoms";
 import mcpClient from "@/services/mcp/client";
+import { McpUrl } from "@/types/mcp";
 
 function validateUrl(url: string): { valid: boolean; message?: string } {
   try {
@@ -230,6 +230,7 @@ export function McpUrlManager() {
       id: crypto.randomUUID(),
       name: serverName,
       url: trimmedUrl,
+      callbackUrl: process.env.CALLBACK_URL,
     };
 
     const updatedUrls = [...(urls || []), newUrlObj];
@@ -286,6 +287,7 @@ export function McpUrlManager() {
             id: crypto.randomUUID(),
             name: serverName,
             url: trimmedPastedText,
+            callbackUrl: process.env.CALLBACK_URL,
           };
 
           const updatedUrls = [...(urls || []), newUrlObj];

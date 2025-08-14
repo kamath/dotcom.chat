@@ -1,20 +1,15 @@
 import { Tool } from "ai";
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-
-export interface McpUrl {
-  id: string;
-  name: string;
-  url: string;
-}
+import type { McpUrl } from "@/types/mcp";
 
 export interface McpConnectionStatus {
   [serverName: string]: "connected" | "failed" | "connecting";
 }
 
-export const toolsAtom = atom<{ breakdown: Record<string, Record<string, Tool>> } | null>(
-  null
-);
+export const toolsAtom = atom<{
+  breakdown: Record<string, Record<string, Tool>>;
+} | null>(null);
 export const isMcpLoadingAtom = atom<boolean>(true);
 export const errorAtom = atom<string | null>(null);
 export const reloadToolsAtom = atom<boolean>(true);
